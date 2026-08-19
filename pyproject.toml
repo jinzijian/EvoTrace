@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "scaleverifier"
 version = "0.2.0"
-description = "Turn real coding-agent usage into executable evaluations."
+description = "Turn every Claude Code and Codex session into reusable training, evaluation, and verification assets."
 readme = "README.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE"}

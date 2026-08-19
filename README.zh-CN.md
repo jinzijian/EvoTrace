@@ -2,16 +2,17 @@
 
 # ScaleVerifier
 
-### 导入 Claude Code / Codex 历史，把最好的旧 session 变成可复用 coding-agent eval。
+### 把每一条 Claude Code 和 Codex session，变成可复用的训练、评测与验证资产。
 
 [English](README.md)
 
-**继续使用你喜欢的 agent。ScaleVerifier 是它们背后的本地数据资产编译器。**
+**Agent session 不是用完即弃的聊天记录，而是会持续复利的数据资产。**
 
 </div>
 
-ScaleVerifier 不要求用户换 coding agent，也不要求把请求先经过一个代理层。它直接索引本地 Claude Code
-与 Codex session，找出值得保留的 trajectory，再结合本地 Git 历史恢复 task、environment 和 verifier。
+每一条 Claude Code 和 Codex session 都不只是聊天历史：里面包含 task intent、human preference、执行证据、
+恢复过程和 verifier signal。ScaleVerifier 把这些原本会流失的轨迹转化成可复用的训练、评测与验证资产，
+同时不要求用户更换 coding agent，也不要求请求先经过一个代理层。
 
 ```text
 Claude Code / Codex history

@@ -27,7 +27,10 @@ from .util import console
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="vf",
-        description="Import coding-agent history and compile the best sessions into evaluations.",
+        description=(
+            "Turn every Claude Code and Codex session into reusable training, "
+            "evaluation, and verification assets."
+        ),
     )
     parser.add_argument("--version", action="version", version=f"ScaleVerifier {__version__}")
     parser.add_argument(

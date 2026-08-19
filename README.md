@@ -2,7 +2,7 @@
 
 # ScaleVerifier
 
-### Import your Claude Code and Codex history. Turn the best sessions into reusable coding-agent evals.
+### Turn every Claude Code and Codex session into reusable training, evaluation, and verification assets.
 
 [![CI](https://github.com/jinzijian/scaleverifier/actions/workflows/ci.yml/badge.svg)](https://github.com/jinzijian/scaleverifier/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB.svg)](https://www.python.org/)
@@ -10,13 +10,14 @@
 
 [简体中文](README.zh-CN.md)
 
-**Keep using the agents you already like. ScaleVerifier is the local asset compiler behind them.**
+**Your agent sessions are not disposable chat logs. They are compounding data assets.**
 
 </div>
 
-ScaleVerifier does not ask users to adopt another coding agent or route work through a proxy. It indexes local
-Claude Code and Codex sessions, finds the trajectories worth preserving, and reconstructs tasks, environments,
-and verifier candidates from real work.
+Every Claude Code and Codex session contains more than chat history: task intent, human preferences, execution
+evidence, recovery patterns, and verifier signals. ScaleVerifier turns that exhaust into reusable training,
+evaluation, and verification assets—without asking users to adopt another coding agent or route work through a
+proxy.
 
 ```text
 Claude Code / Codex history
