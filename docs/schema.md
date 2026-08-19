@@ -22,6 +22,8 @@ Each session directory contains `trajectory.json` plus `events.jsonl`.
   "repository": {
     "root": "/local/path",
     "base_commit": "abc123...",
+    "base_commit_source": "session",
+    "reconstruction_confidence": "high",
     "dirty": false
   },
   "verification": {
@@ -61,11 +63,40 @@ Known event kinds are:
 
 Adapters may omit events that cannot be mapped without copying provider-specific internal state.
 
+## Mined candidate
+
+Each `vf mine` pass writes one JSON record per session under `candidates/`. A record contains a bounded score,
+classification labels, human-readable evidence, and the raw signal counts used by the deterministic curator:
+
+```json
+{
+  "schema_version": "0.1",
+  "session_id": "codex-019f...",
+  "curator": {
+    "kind": "evidence_heuristic",
+    "version": "0.2",
+    "model_used": false
+  },
+  "score": 8,
+  "labels": ["useful", "execution_verifiable", "recovery_trajectory"],
+  "evidence": ["2 code-edit tool calls", "1 verification command(s) recovered"],
+  "signals": {
+    "human_corrected": false,
+    "recovery_observed": true,
+    "reconstruction_confidence": "high"
+  }
+}
+```
+
 ## Compiled task manifest
 
 `task.json` is the canonical bundle manifest. It records the recovered task, source session, base commit,
 environment inference, verifier configuration, and reproducibility evidence. `task.yaml` is a compact interchange
 view for harnesses; consumers that need all fields should use `task.json`.
+
+Every compiled bundle also includes `sandbox-policy.json`. V0.2 records `container_only` execution, an ephemeral
+container copy, no host mounts or Docker socket, no privileged execution, no network by default, and output limited
+to a new run directory. Runtime implementations must enforce rather than merely parse this policy.
 
 ## Compatibility policy
 

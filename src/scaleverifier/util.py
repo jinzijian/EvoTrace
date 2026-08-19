@@ -60,6 +60,17 @@ def append_jsonl(path: Path, value: Any) -> None:
         handle.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
 
 
+def write_jsonl(path: Path, values: Iterable[Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=path.parent, delete=False
+    ) as handle:
+        for value in values:
+            handle.write(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n")
+        temporary = Path(handle.name)
+    temporary.replace(path)
+
+
 def load_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
     try:
         with path.open(encoding="utf-8") as handle:

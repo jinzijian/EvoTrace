@@ -5,14 +5,13 @@ import os
 import shlex
 import subprocess
 import sys
-import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .errors import ScaleVerifierError
 from .gitops import setup_from_bundle
 from .store import Store
-from .util import compact_timestamp, parse_name_value, slugify, write_json
+from .util import parse_name_value
 
 
 def resolve_bundle(target: str, store: Store) -> Path:
@@ -31,7 +30,7 @@ def resolve_bundle(target: str, store: Store) -> Path:
     if candidate.is_dir() and (candidate / "task.json").exists():
         return candidate.resolve()
     raise ScaleVerifierError(
-        f"Benchmark not found: {target}. Compile the session first with `scaleverifier compile {target}`."
+        f"Benchmark not found: {target}. Build the session first with `vf build {target}`."
     )
 
 
@@ -77,64 +76,6 @@ def replay_bundle(
     return workspace
 
 
-def _run_agent(
-    *,
-    bundle: Path,
-    store: Store,
-    name: str,
-    command: str,
-    timeout: int,
-) -> Dict[str, Any]:
-    run_dir = store.runs / bundle.name / f"{compact_timestamp()}-{slugify(name)}"
-    workspace = run_dir / "workspace"
-    run_dir.mkdir(parents=True)
-    setup_from_bundle(bundle, workspace)
-    task = (bundle / "task.md").read_text(encoding="utf-8")
-    environment = os.environ.copy()
-    environment.update(
-        {
-            "SCALEVERIFIER_TASK": task,
-            "SCALEVERIFIER_TASK_FILE": str((bundle / "task.md").resolve()),
-            "SCALEVERIFIER_WORKSPACE": str(workspace.resolve()),
-        }
-    )
-    started = time.monotonic()
-    try:
-        process = subprocess.run(
-            command,
-            cwd=workspace,
-            env=environment,
-            shell=True,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=timeout,
-        )
-        agent_exit_code = process.returncode
-        output = process.stdout
-        timed_out = False
-    except subprocess.TimeoutExpired as exc:
-        agent_exit_code = 124
-        output = (exc.stdout or "") + "\nTIMEOUT"
-        timed_out = True
-    duration = round(time.monotonic() - started, 3)
-    (run_dir / "agent.log").write_text(output, encoding="utf-8", errors="replace")
-    report = verify_candidate(bundle, workspace)
-    result = {
-        "name": name,
-        "command": command,
-        "agent_exit_code": agent_exit_code,
-        "timed_out": timed_out,
-        "duration_seconds": duration,
-        "passed": report["passed"],
-        "score": report["score"],
-        "verifier": report,
-        "run_dir": str(run_dir),
-    }
-    write_json(run_dir / "result.json", result)
-    return result
-
-
 def _score_candidate(bundle: Path, name: str, path: str) -> Dict[str, Any]:
     repo = Path(path).expanduser().resolve()
     if not repo.is_dir():
@@ -162,21 +103,13 @@ def benchmark(
     store: Store,
 ) -> List[Dict[str, Any]]:
     if not agents and not candidates:
+        raise ScaleVerifierError("Provide at least one --candidate NAME=PATH")
+    if agents:
         raise ScaleVerifierError(
-            "Provide at least one --agent NAME=COMMAND or --candidate NAME=PATH"
+            "Host agent execution is disabled by the sandbox contract. "
+            "Build the eval with `vf build`, then run the agent inside the generated Docker image."
         )
     results = []
-    for value in agents:
-        name, command = parse_name_value(value, "--agent")
-        results.append(
-            _run_agent(
-                bundle=bundle,
-                store=store,
-                name=name,
-                command=command,
-                timeout=timeout,
-            )
-        )
     for value in candidates:
         name, path = parse_name_value(value, "--candidate")
         results.append(_score_candidate(bundle, name, path))

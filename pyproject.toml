@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "scaleverifier"
-version = "0.1.0"
+version = "0.2.0"
 description = "Turn real coding-agent usage into executable evaluations."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -43,6 +43,7 @@ Issues = "https://github.com/jinzijian/scaleverifier/issues"
 [project.scripts]
 scaleverifier = "scaleverifier.cli:main"
 sv = "scaleverifier.cli:main"
+vf = "scaleverifier.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scaleverifier"]

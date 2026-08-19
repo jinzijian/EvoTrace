@@ -36,6 +36,15 @@ verifier before moving a bundle outside its original trust boundary.
 commands. A malicious task bundle can run arbitrary code with the current user's permissions. Only execute bundles
 you trust, preferably in a disposable container or virtual machine.
 
+Autonomous agent execution on the host is prohibited by the V0.2 sandbox contract. `benchmark --agent` is rejected
+rather than running a supplied agent command against a host-side checkout. Generated bundles include a non-root
+Dockerfile and `sandbox-policy.json`; the planned orchestrator must additionally enforce no host bind mounts, no
+Docker socket, no privileged mode, no inherited credentials, network disabled by default, dropped capabilities,
+and bounded resources. See [`docs/sandbox-contract.md`](docs/sandbox-contract.md).
+
+`scaleverifier verify` and candidate scoring remain explicit host-side operations and execute verifier commands.
+They should be used only with a bundle and checkout the operator trusts.
+
 ## Recommended sharing checklist
 
 1. Inspect `task.md`, `task.json`, `verifier.json`, and both patch files.

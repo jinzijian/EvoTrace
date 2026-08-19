@@ -20,21 +20,18 @@ class Store:
     def __init__(self, root: Optional[Path] = None) -> None:
         if root is None:
             configured = os.environ.get("SCALEVERIFIER_HOME")
-            repo = find_git_root()
-            root = (
-                Path(configured).expanduser()
-                if configured
-                else (repo or Path.cwd()) / ".scaleverifier"
-            )
+            root = Path(configured).expanduser() if configured else Path.home() / ".scaleverifier"
         self.root = root.resolve()
         self.sessions = self.root / "sessions"
         self.benchmarks = self.root / "benchmarks"
         self.runs = self.root / "runs"
+        self.candidates = self.root / "candidates"
 
     def initialize(self) -> None:
         self.sessions.mkdir(parents=True, exist_ok=True)
         self.benchmarks.mkdir(parents=True, exist_ok=True)
         self.runs.mkdir(parents=True, exist_ok=True)
+        self.candidates.mkdir(parents=True, exist_ok=True)
 
     def session_dir(self, session_id: str) -> Path:
         if session_id == "latest":
@@ -74,3 +71,14 @@ class Store:
 
     def save_session(self, session_dir: Path, trajectory: Dict[str, Any]) -> None:
         write_json(session_dir / "trajectory.json", trajectory)
+
+    def list_candidates(self) -> List[Dict[str, Any]]:
+        if not self.candidates.exists():
+            return []
+        result = []
+        for path in self.candidates.glob("*.json"):
+            try:
+                result.append(read_json(path))
+            except ScaleVerifierError:
+                continue
+        return sorted(result, key=lambda item: item.get("score", 0), reverse=True)

@@ -7,8 +7,9 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from scaleverifier.compiler import compile_session
+from scaleverifier.errors import ScaleVerifierError
 from scaleverifier.recorder import record_command
-from scaleverifier.runner import replay_bundle, verify_candidate
+from scaleverifier.runner import benchmark, replay_bundle, verify_candidate
 from scaleverifier.store import Store
 
 
@@ -59,8 +60,21 @@ class EndToEndTests(unittest.TestCase):
                 )
             bundle, manifest = compile_session(trajectory["session_id"], store=store)
             self.assertEqual(manifest["verifier"]["command_source"], "explicit")
+            self.assertEqual(manifest["sandbox"]["execution"], "container_only")
+            self.assertEqual(manifest["sandbox"]["host_mounts"], [])
             self.assertTrue((bundle / "environment" / "base.tar.gz").exists())
             self.assertTrue((bundle / "verifier.py").exists())
+            self.assertTrue((bundle / "sandbox-policy.json").exists())
+            dockerfile = (bundle / "Dockerfile").read_text(encoding="utf-8")
+            self.assertIn("USER 65532:65532", dockerfile)
+            with self.assertRaisesRegex(ScaleVerifierError, "sandbox contract"):
+                benchmark(
+                    bundle,
+                    agents=["unsafe=echo hello"],
+                    candidates=[],
+                    timeout=10,
+                    store=store,
+                )
 
             shell_candidate = root / "shell-candidate"
             subprocess.run(

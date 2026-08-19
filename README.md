@@ -2,7 +2,7 @@
 
 # ScaleVerifier
 
-### Turn real coding-agent usage into executable evaluations.
+### Import your Claude Code and Codex history. Turn the best sessions into reusable coding-agent evals.
 
 [![CI](https://github.com/jinzijian/scaleverifier/actions/workflows/ci.yml/badge.svg)](https://github.com/jinzijian/scaleverifier/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB.svg)](https://www.python.org/)
@@ -10,52 +10,58 @@
 
 [简体中文](README.zh-CN.md)
 
-**Keep your coding agent. ScaleVerifier turns what it already does into the tasks, environments, and verifiers needed to evaluate the next one.**
+**Keep using the agents you already like. ScaleVerifier is the local asset compiler behind them.**
 
 </div>
 
----
-
-Your team is already generating the most relevant coding-agent benchmark it could have: real work.
-The problem is that this work is trapped in agent histories, local repositories, shell output, and human
-corrections. ScaleVerifier compiles those signals into portable eval bundles:
+ScaleVerifier does not ask users to adopt another coding agent or route work through a proxy. It indexes local
+Claude Code and Codex sessions, finds the trajectories worth preserving, and reconstructs tasks, environments,
+and verifier candidates from real work.
 
 ```text
-(initial state, task, trajectory, final state, verifier)
+Claude Code / Codex history
+            +
+      local Git archaeology
+            ↓
+     normalized trajectory
+            ↓
+        local curator
+       ┌────┴─────┐
+       ↓          ↓
+ preference    executable
+ DPO / SFT     task + env
+ QA / pairs    Docker + verifier
 ```
-
-It is not another coding agent, agent harness, or trace dashboard. It is the layer that turns production
-usage into reusable evaluation infrastructure.
 
 > [!WARNING]
-> ScaleVerifier is an early alpha. The CLI and bundle schema may change. Generated verifiers are evidence,
-> not proof of semantic correctness; inspect them before using scores for consequential decisions.
+> ScaleVerifier is an early alpha. Mining labels and generated verifiers are evidence, not proof of task quality
+> or semantic correctness. Inspect every eval before relying on it or sharing it.
 
-## The magic moment
+## The day-one experience
 
 ```console
-$ scaleverifier import codex --last 20
-Imported codex-019f...
+$ vf import
+Found 184 session(s)
+Discovered files             186
+Indexed files                186
 ...
-20 session(s) normalized locally.
 
-$ scaleverifier compile latest
-Benchmark ready.
-Task:        codex-019f...
-Environment: python (medium confidence)
-Verifier:    2 command(s), source=trajectory
-Bundle:      .scaleverifier/benchmarks/codex-019f...
+$ vf mine
+Found                         184
+Useful                        73
+Human corrected               31
+Execution-verifiable          26
+Preference candidates         19
+Recovery trajectories         14
+Low-value / trivial           111
 
-$ scaleverifier benchmark latest \
-    --candidate codex=/tmp/codex-result \
-    --candidate claude=/tmp/claude-result
-CANDIDATE              RESULT        SCORE    SECONDS
-codex                  PASS          100.0%        8.3
-claude                 FAIL           50.0%        7.9
+$ vf build
+SESSION                                  STATUS          BUNDLE / REASON
+codex-...                                built           ~/.scaleverifier/benchmarks/codex-...
 ```
 
-The output above is illustrative. ScaleVerifier reports only results produced by the verifier commands in
-your compiled bundle.
+The numbers above illustrate the UX; ScaleVerifier reports the counts found in your own local history. The V0.2
+curator is a deterministic, auditable heuristic. It does not call an LLM or upload session data.
 
 ## Install
 
@@ -63,209 +69,172 @@ With [`uv`](https://docs.astral.sh/uv/):
 
 ```bash
 uv tool install git+https://github.com/jinzijian/scaleverifier.git
+vf doctor
 ```
 
-Or for local development:
+For development:
 
 ```bash
 git clone https://github.com/jinzijian/scaleverifier.git
 cd scaleverifier
 uv sync
-uv run scaleverifier doctor
+uv run vf doctor
 ```
 
-ScaleVerifier has no runtime Python dependencies. Git is required; Docker is optional.
+ScaleVerifier has no runtime Python dependencies. Git is required; Docker is used for sandboxed execution.
+`scaleverifier` and `sv` remain aliases for `vf`.
 
-## Quick start
+## Three commands
 
-### 1. Import work you already did
-
-ScaleVerifier currently understands local Codex and Claude Code JSONL histories:
+### `vf import` — index history you already have
 
 ```bash
-# Auto-discover the most recent local sessions.
-scaleverifier import codex --last 20
-scaleverifier import claude --last 20
+# Discover both sources and index all available sessions.
+vf import
 
-# Or import exact files.
-scaleverifier import codex ~/.codex/sessions/2026/08/19/rollout-*.jsonl
-scaleverifier import claude ~/.claude/projects/my-project/session.jsonl
+# Limit or select a source.
+vf import codex
+vf import claude --last 20
 
-scaleverifier sessions
+# Import exact files.
+vf import codex ~/.codex/sessions/2026/08/19/rollout-*.jsonl
+vf import codex ~/.codex/history.jsonl
+vf import claude ~/.claude/projects/my-project/session.jsonl
 ```
 
-Imports are local. ScaleVerifier writes normalized events, not a second copy of the raw history file.
+The importer honors `$CODEX_HOME` and `$CLAUDE_CONFIG_DIR`. For Codex it recognizes rich session JSONL files and
+the lighter prompt history separately, keeping the richer copy when both identify the same session. Claude Code
+documents plaintext session transcripts under `~/.claude/projects/` and a default 30-day cleanup window;
+installing ScaleVerifier early preserves a normalized local index before old transcripts disappear. See the
+[Claude Code session docs](https://code.claude.com/docs/en/sessions),
+[Claude Code data-path docs](https://code.claude.com/docs/en/claude-directory),
+[Codex configuration reference](https://developers.openai.com/codex/config-reference), and
+[Codex CLI resume reference](https://developers.openai.com/codex/cli/reference).
 
-### 2. Record a new run
+Imports are incremental: unchanged source files are skipped using size and modification-time fingerprints. Use
+`--refresh` to force re-indexing. Raw history files are read in place, never copied into the ScaleVerifier store.
 
-Wrap any agent or command. Interactive commands use a PTY when available.
+### `vf mine` — find valuable experience
 
 ```bash
-scaleverifier record \
-  --task "Add cursor-based pagination without breaking existing clients" \
-  --verify "python -m pytest -q" \
-  -- claude
+vf mine
+vf mine --source codex --min-score 4
+vf mine --json
 ```
 
-You can wrap Codex, Claude Code, Cursor's CLI, OpenHands, an internal agent, or a test script. A generic
-command wrapper can observe process output and Git state; native history import provides richer tool-call
-events.
+V0.2 scores only observable signals: non-trivial task text, code-edit calls, verification commands, failed then
+successful checks, human corrections after agent work, and repository reconstruction confidence. Every candidate
+contains its score, labels, signals, and human-readable evidence in `~/.scaleverifier/candidates/`.
 
-### 3. Compile a session
+- `preference_candidate`: a likely rejected/chosen or correction pair for DPO, preference, QA, or SFT curation.
+- `execution_verifiable`: code changes plus recovered verification and a reconstructable repository base.
+- `recovery_trajectory`: a failure or correction followed by subsequent repair work.
+
+This deliberately avoids model-judged labels in the first release. A model curator can later sit behind the same
+schema without weakening provenance.
+
+### `vf build` — compile executable eval assets
 
 ```bash
-scaleverifier compile latest
+# Build the highest-ranked execution-verifiable candidates.
+vf build --limit 10
 
-# Add an explicit behavioral verifier when inference is not enough.
-scaleverifier compile SESSION_ID \
+# Build one session and optionally add trusted verifier commands.
+vf build SESSION_ID \
   --verify "python -m pytest tests/integration -q" \
   --verify "python -m ruff check src"
 ```
 
-Verifier command precedence is:
-
-1. commands explicitly supplied during `record` or `compile`;
-2. test/build/lint commands recovered from the trajectory;
-3. conservative repository conventions such as `pytest`, `npm test`, `cargo test`, or `go test`.
-
-If no behavioral command can be recovered, ScaleVerifier says so and produces only a repository-change
-check. It never silently presents that weak check as a strong verifier.
-
-### 4. Replay the task
-
-```bash
-scaleverifier replay latest --dest /tmp/scaleverifier-task
-cat .scaleverifier/benchmarks/*/task.md
-```
-
-Replay reconstructs a fresh Git workspace from the recorded base tree, initial patch, and allowed untracked
-files. It does not apply the reference solution.
-
-### 5. Evaluate agents or existing results
-
-Run agents in independent fresh workspaces. The task is available through
-`$SCALEVERIFIER_TASK`, `$SCALEVERIFIER_TASK_FILE`, and `$SCALEVERIFIER_WORKSPACE`:
-
-```bash
-scaleverifier benchmark latest \
-  --agent 'codex=codex exec "$SCALEVERIFIER_TASK"' \
-  --agent 'claude=claude -p "$SCALEVERIFIER_TASK"'
-```
-
-Or score existing checkouts:
-
-```bash
-scaleverifier benchmark latest \
-  --candidate candidate-a=/path/to/checkout-a \
-  --candidate candidate-b=/path/to/checkout-b
-```
-
-Mine obvious failure signals across local histories:
-
-```bash
-scaleverifier failures
-```
-
-Current failure mining is deliberately heuristic. It surfaces process failures, observed failing verification,
-and human corrections after an agent claimed success; it does not pretend to infer a complete root cause.
-
-## What gets compiled
-
-Every bundle is self-contained enough to inspect, move, and restore without the original agent history:
+A history transcript is not a complete environment. The builder combines session evidence with the local Git
+repository: it uses a commit captured by the session when available, otherwise tries a time-aligned Git commit,
+and records reconstruction confidence instead of pretending the result is exact. It then emits:
 
 ```text
 benchmark-id/
-├── task.md                         # task presented to the candidate
-├── task.json                       # complete machine-readable manifest
-├── task.yaml                       # compact harness-friendly task record
-├── verifier.py                     # dependency-free executable verifier
-├── verifier.json                   # commands, timeout, and policy
-├── setup.sh                        # standalone workspace restoration
-├── Dockerfile                      # inferred environment starting point
+├── task.md
+├── task.json
+├── task.yaml
+├── verifier.py
+├── verifier.json
+├── sandbox-policy.json
+├── setup.sh
+├── Dockerfile
 ├── environment/
-│   ├── base.tar.gz                 # tracked tree at the base commit
+│   ├── base.tar.gz
 │   ├── environment.json
 │   └── untracked-initial.tar.gz
 └── patches/
-    ├── initial.patch               # dirty state that existed before the task
-    └── reference.patch             # observed final state; never used by verifier
+    ├── initial.patch
+    └── reference.patch
 ```
 
-The reference patch supports error analysis and conservative verifier synthesis, such as identifying existing test
-files the successful trajectory did not edit. Candidate evaluation never applies the patch and never compares for
-exact patch equality.
+Verifier provenance is always visible: explicit user command, trajectory-recovered command, repository convention,
+or a warning that no behavioral verifier was found.
 
-## Architecture
+## Day two and beyond
 
-```mermaid
-flowchart LR
-    A[Codex / Claude Code / any agent] --> B[History import or passive recorder]
-    B --> C[Normalized trajectory]
-    C --> D[Workflow compiler]
-    D --> E[Task]
-    D --> F[Environment]
-    D --> G[Verifier]
-    E --> H[Replay and benchmark]
-    F --> H
-    G --> H
-    H --> I[Failure mining]
-    I -. new evals .-> D
+Keep the local index current without placing ScaleVerifier in front of either agent:
+
+```bash
+vf watch                 # poll every five minutes and re-run mining
+vf watch --interval 60
+vf watch --once          # useful in cron or a nightly job
 ```
 
-The normalized trajectory schema and compiler trust boundaries are documented in
-[`docs/schema.md`](docs/schema.md) and [`docs/design.md`](docs/design.md).
+The watcher reads changed history files only. It does not modify Claude Code, Codex, or source repositories.
 
-## Local-first privacy model
+## Container-only agent boundary
 
-ScaleVerifier is useful without an account, server, telemetry endpoint, or data upload.
+The host-side importer and builder may read session files and Git objects, but they never give an autonomous agent
+a writable host checkout. Each bundle contains an explicit `sandbox-policy.json` and a non-root Dockerfile. The
+contract is:
 
-- Storage defaults to `.scaleverifier/` in the current Git repository, or `$SCALEVERIFIER_HOME`.
-- Raw Codex and Claude Code histories are read in place and are not copied.
-- Normalized message/tool text receives best-effort token and secret redaction.
-- Common secret files such as `.env`, private keys, and Git-ignored files are excluded from untracked snapshots.
-- No trajectory licensing, marketplace, or upload behavior exists in this repository.
+- source enters as an archive copied into the image, not as a writable bind mount;
+- no Docker socket, privileged mode, host PID namespace, or host credentials;
+- runtime network is off by default, Linux capabilities are dropped, and new privileges are blocked;
+- the agent may freely edit or delete its ephemeral `/workspace` copy;
+- host output is promoted only into a new, unique run directory after validation;
+- internal systems are exposed only through explicit read-only adapters or deterministic mocks—never production
+  write credentials.
 
-Reproducibility and perfect sanitization are in tension. A compiled bundle intentionally contains a source-tree
-snapshot and patches; tracked secrets or secrets embedded in source code may therefore remain. **Treat every
-bundle as private until you inspect it.** See [`SECURITY.md`](SECURITY.md) before sharing a bundle.
+For this reason V0.2 rejects legacy `benchmark --agent` host execution. The safe container orchestrator is the next
+runtime milestone; today `vf build` produces its complete, inspectable input. Existing candidate checkouts can still
+be scored explicitly with `vf benchmark ... --candidate NAME=PATH`.
 
-## How this differs
+Read the full [sandbox contract](docs/sandbox-contract.md) and [security model](SECURITY.md).
 
-| Category | Primary output | ScaleVerifier's relationship |
-|---|---|---|
-| Coding agents | A code change | Keep using them; ScaleVerifier observes or imports their work |
-| Observability | Trace dashboards | ScaleVerifier compiles traces into executable assets |
-| Agent harnesses | Agent loops and tool runtimes | ScaleVerifier supplies real tasks, environments, and verifiers |
-| Static benchmarks | A fixed public task set | ScaleVerifier creates private, continuously refreshed tasks from real usage |
-| RL frameworks | Optimization over a reward | ScaleVerifier can supply executable environments and verifier-based reward signals |
+## Storage and privacy
 
-## Project status
+The default store is `~/.scaleverifier/`; override it with `$SCALEVERIFIER_HOME` or `--home`.
 
-Implemented today:
+- No account, hosted LLM, API key, telemetry endpoint, payment flow, or data upload is required.
+- Normalized text receives best-effort secret redaction.
+- Git-ignored files, common `.env` files, and private-key suffixes are excluded from untracked snapshots.
+- A compiled bundle contains source code and may still contain tracked secrets. Treat it as private until reviewed.
 
-- local Codex and Claude Code history import;
-- generic PTY/process recorder;
-- normalized trajectory schema with best-effort redaction;
-- Git base-state, dirty-patch, and untracked-file capture;
-- portable replay bundles and generated Dockerfiles;
-- explicit, trajectory-inferred, and repository-inferred verifiers;
-- fresh-workspace agent benchmarking and existing-checkout scoring;
-- lightweight failure-signal mining.
+## Current scope
+
+Implemented in V0.2:
+
+- full and incremental Claude Code / Codex history discovery;
+- rich-session versus prompt-history precedence;
+- normalized, redacted local trajectories;
+- auditable preference, execution, correction, recovery, and low-value mining;
+- Git-time reconstruction confidence;
+- task, environment, Dockerfile, and verifier bundle generation;
+- explicit container-only policy with non-root images and no host-agent fallback;
+- replay, verifier execution, and existing-candidate scoring from V0.1.
 
 Next milestones:
 
-- reproducibility scoring across many sessions;
-- stronger verifier synthesis and verifier-miss detection;
-- CI result and human correction adapters;
-- deduplication, difficulty filtering, and benchmark registries;
-- harness adapters for common eval and post-training frameworks;
-- privacy review manifests and opt-in export workflows.
+- a sandboxed curator/builder agent that can generate mocks and improve verifier coverage;
+- automatic verifier validation and reward-hacking checks;
+- opt-in read-only internal-service adapters and record/replay mocks;
+- export adapters for DPO, preference, QA, SFT, and executable-eval datasets;
+- deduplication, difficulty estimation, and benchmark registries.
 
-## Contributing
-
-The highest-value contributions are new history adapters, reproducibility fixtures, verifier policies, and
-adversarial examples that expose false passes. Read [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a PR.
+See [docs/design.md](docs/design.md) and [docs/schema.md](docs/schema.md) for the data model.
 
 ## License
 
-Apache License 2.0. See [`LICENSE`](LICENSE).
+Apache License 2.0.

@@ -4,15 +4,20 @@ import argparse
 import json
 import shutil
 import subprocess
-from glob import glob
+import time
+from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
 from . import __version__
 from .analytics import failure_summary
+from .builder import build_mined_candidates
 from .compiler import compile_session
 from .errors import ScaleVerifierError
-from .importers import import_claude, import_codex
+from .history import import_discovered_history
+from .importers import import_claude, import_codex, import_codex_prompt_history
+from .miner import mine_store
 from .recorder import record_command
 from .runner import benchmark, replay_bundle, resolve_bundle, verify_candidate
 from .store import Store
@@ -21,14 +26,14 @@ from .util import console
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="scaleverifier",
-        description="Turn real coding-agent usage into executable evaluations.",
+        prog="vf",
+        description="Import coding-agent history and compile the best sessions into evaluations.",
     )
     parser.add_argument("--version", action="version", version=f"ScaleVerifier {__version__}")
     parser.add_argument(
         "--home",
         type=Path,
-        help="Storage directory (default: .scaleverifier in the current Git repository)",
+        help="Storage directory (default: ~/.scaleverifier or $SCALEVERIFIER_HOME)",
     )
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
@@ -41,15 +46,38 @@ def _parser() -> argparse.ArgumentParser:
     record.add_argument("--no-pty", action="store_true", help="Disable interactive PTY recording")
     record.add_argument("command", nargs=argparse.REMAINDER)
 
-    importer = subparsers.add_parser("import", help="Import existing local agent history")
-    importer.add_argument("source", choices=["codex", "claude"])
+    importer = subparsers.add_parser("import", help="Index existing local agent history")
+    importer.add_argument("source", nargs="?", choices=["all", "codex", "claude"], default="all")
     importer.add_argument("paths", nargs="*", type=Path)
     importer.add_argument(
         "--last",
         type=int,
-        default=1,
-        help="When no path is given, import the N most recent local sessions",
+        help="When no path is given, index only the N most recently modified session files",
     )
+    importer.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Re-index files even when their size and modification time are unchanged",
+    )
+
+    mine = subparsers.add_parser("mine", help="Find useful training and eval candidates")
+    mine.add_argument("--source", choices=["all", "codex", "claude"], default="all")
+    mine.add_argument("--min-score", type=int, default=0)
+    mine.add_argument("--json", action="store_true")
+
+    build = subparsers.add_parser("build", help="Build mined sessions into eval bundles")
+    build.add_argument(
+        "session", nargs="?", help="Specific session id (default: top executable candidates)"
+    )
+    build.add_argument("--limit", type=int, default=10)
+    build.add_argument("--verify", action="append", default=[], help="Verifier command; repeatable")
+    build.add_argument("--json", action="store_true")
+
+    watch = subparsers.add_parser("watch", help="Incrementally index new local sessions")
+    watch.add_argument("--source", choices=["all", "codex", "claude"], default="all")
+    watch.add_argument("--interval", type=int, default=300, help="Polling interval in seconds")
+    watch.add_argument("--once", action="store_true", help="Run one incremental pass and exit")
+    watch.add_argument("--no-mine", action="store_true", help="Skip mining after each import pass")
 
     sessions = subparsers.add_parser("sessions", help="List recorded and imported sessions")
     sessions.add_argument("--json", action="store_true")
@@ -71,9 +99,15 @@ def _parser() -> argparse.ArgumentParser:
     verify.add_argument("--repo", type=Path, default=Path.cwd())
     verify.add_argument("--json", action="store_true")
 
-    bench = subparsers.add_parser("benchmark", help="Run agents or score existing candidates")
+    bench = subparsers.add_parser("benchmark", help="Score existing candidate checkouts")
     bench.add_argument("benchmark", help="Bundle path, session id, or 'latest'")
-    bench.add_argument("--agent", action="append", default=[], metavar="NAME=COMMAND")
+    bench.add_argument(
+        "--agent",
+        action="append",
+        default=[],
+        metavar="NAME=COMMAND",
+        help="Disabled: agents must run inside the generated Docker sandbox",
+    )
     bench.add_argument("--candidate", action="append", default=[], metavar="NAME=PATH")
     bench.add_argument("--timeout", type=int, default=1800)
     bench.add_argument("--json", action="store_true")
@@ -87,23 +121,6 @@ def _parser() -> argparse.ArgumentParser:
 
 def _clean_remainder(command: List[str]) -> List[str]:
     return command[1:] if command and command[0] == "--" else command
-
-
-def _discover_history(source: str, count: int) -> List[Path]:
-    if count < 1:
-        raise ScaleVerifierError("--last must be at least 1")
-    home = Path.home()
-    if source == "codex":
-        pattern = str(home / ".codex" / "sessions" / "**" / "*.jsonl")
-        paths = [Path(item) for item in glob(pattern, recursive=True)]
-    else:
-        pattern = str(home / ".claude" / "projects" / "**" / "*.jsonl")
-        paths = [
-            Path(item)
-            for item in glob(pattern, recursive=True)
-            if "subagents" not in Path(item).parts
-        ]
-    return sorted(paths, key=lambda path: path.stat().st_mtime, reverse=True)[:count]
 
 
 def _print_sessions(store: Store, as_json: bool) -> None:
@@ -121,7 +138,7 @@ def _print_sessions(store: Store, as_json: bool) -> None:
         console(json.dumps(rows, indent=2, ensure_ascii=False))
         return
     if not rows:
-        console("No sessions yet. Try: scaleverifier import codex <session.jsonl>")
+        console("No sessions yet. Try: vf import")
         return
     console(f"{'SESSION':<40} {'AGENT':<12} {'STATUS':<16} TASK")
     for row in rows:
@@ -159,6 +176,61 @@ def _tool_version(name: str) -> tuple[str, str]:
     return ("OK", detail) if result.returncode == 0 else ("!!", detail)
 
 
+def _import_explicit(source: str, paths: List[Path], store: Store) -> List[dict]:
+    if source == "all":
+        raise ScaleVerifierError(
+            "Explicit paths require `vf import codex ...` or `vf import claude ...`"
+        )
+    imported = []
+    for path in paths:
+        resolved = path.expanduser().resolve()
+        if source == "codex" and resolved.name == "history.jsonl":
+            results = import_codex_prompt_history(resolved, store)
+        else:
+            importer = import_codex if source == "codex" else import_claude
+            results = [importer(resolved, store)]
+        for _, trajectory in results:
+            imported.append(trajectory)
+    return imported
+
+
+def _print_mining(summary) -> None:
+    console(f"Found                         {summary.total}")
+    console(f"Useful                        {summary.useful}")
+    console(f"Human corrected               {summary.human_corrected}")
+    console(f"Execution-verifiable          {summary.execution_verifiable}")
+    console(f"Preference candidates         {summary.preference_candidates}")
+    console(f"Recovery trajectories         {summary.recovery_trajectories}")
+    console(f"Low-value / trivial           {summary.low_value}")
+    console("\nCurator: evidence heuristic v0.2 (no model or data upload)")
+
+
+def _watch(store: Store, *, source: str, interval: int, once: bool, run_mining: bool) -> None:
+    if interval < 5 and not once:
+        raise ScaleVerifierError("--interval must be at least 5 seconds")
+    while True:
+        stamp = datetime.now().astimezone().isoformat(timespec="seconds")
+        try:
+            summary = import_discovered_history(store, source=source, incremental=True)
+            console(
+                f"[{stamp}] processed={summary.processed_files} "
+                f"unchanged={summary.skipped_unchanged_files} sessions={len(summary.session_ids)}"
+            )
+            if run_mining:
+                mined = mine_store(store, source=source)
+                console(
+                    f"[{stamp}] useful={mined.useful} executable={mined.execution_verifiable} "
+                    f"preference={mined.preference_candidates}"
+                )
+        except ScaleVerifierError as exc:
+            console(f"[{stamp}] {exc}", error=True)
+            if once:
+                raise
+        if once:
+            return
+        time.sleep(interval)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     args = _parser().parse_args(argv)
     store = Store(args.home) if args.home else Store()
@@ -175,21 +247,73 @@ def main(argv: Optional[List[str]] = None) -> int:
             )
             console(f"\nRecorded {trajectory['session_id']}")
             console(f"Session: {session_dir}")
-            console(f"Next: scaleverifier compile {trajectory['session_id']}")
+            console(f"Next: vf mine && vf build {trajectory['session_id']}")
             return trajectory["outcome"]["exit_code"]
 
         if args.subcommand == "import":
-            imported = []
-            importer = import_codex if args.source == "codex" else import_claude
-            paths = args.paths or _discover_history(args.source, args.last)
-            if not paths:
-                raise ScaleVerifierError(f"No local {args.source} session history found")
-            for path in paths:
-                _, trajectory = importer(path.expanduser().resolve(), store)
-                imported.append(trajectory)
-                console(f"Imported {trajectory['session_id']}")
-            console(f"\n{len(imported)} session(s) normalized locally.")
-            console("Next: scaleverifier sessions")
+            if args.paths:
+                imported = _import_explicit(args.source, args.paths, store)
+                console(f"Found {len(imported)} session(s)")
+                console(f"Indexed {len(imported)} session(s) locally")
+            else:
+                summary = import_discovered_history(
+                    store,
+                    source=args.source,
+                    last=args.last,
+                    incremental=not args.refresh,
+                )
+                console(f"Found {len(summary.session_ids)} session(s)")
+                console(f"Discovered files             {summary.discovered_files}")
+                console(f"Indexed files                {summary.processed_files}")
+                console(f"Unchanged files              {summary.skipped_unchanged_files}")
+                console(f"Created sessions             {summary.created_sessions}")
+                console(f"Refreshed sessions           {summary.refreshed_sessions}")
+                console(f"Kept richer session records  {summary.kept_richer_sessions}")
+            console("\nNext: vf mine")
+            return 0
+
+        if args.subcommand == "mine":
+            if not 0 <= args.min_score <= 10:
+                raise ScaleVerifierError("--min-score must be between 0 and 10")
+            summary = mine_store(
+                store,
+                source=args.source,
+                minimum_score=args.min_score,
+            )
+            if args.json:
+                console(json.dumps(asdict(summary), indent=2, ensure_ascii=False))
+            else:
+                _print_mining(summary)
+                if summary.execution_verifiable:
+                    console("\nNext: vf build")
+            return 0
+
+        if args.subcommand == "build":
+            results = build_mined_candidates(
+                store,
+                session_id=args.session,
+                limit=args.limit,
+                extra_commands=args.verify,
+            )
+            if args.json:
+                console(json.dumps([asdict(item) for item in results], indent=2))
+            else:
+                console(f"{'SESSION':<40} {'STATUS':<15} BUNDLE / REASON")
+                for item in results:
+                    detail = item.bundle or item.error or ""
+                    console(f"{item.session_id:<40} {item.status:<15} {detail}")
+                built = sum(item.status in {"built", "already_built"} for item in results)
+                console(f"\n{built}/{len(results)} eval bundle(s) ready.")
+            return 0 if all(item.status != "skipped" for item in results) else 1
+
+        if args.subcommand == "watch":
+            _watch(
+                store,
+                source=args.source,
+                interval=args.interval,
+                once=args.once,
+                run_mining=not args.no_mine,
+            )
             return 0
 
         if args.subcommand == "sessions":
@@ -215,7 +339,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             if verifier["warning"]:
                 console(f"Warning:     {verifier['warning']}")
             console(f"Bundle:      {bundle}")
-            console("\nNext: scaleverifier replay latest --dest /tmp/scaleverifier-task")
+            console("\nNext: vf replay latest --dest /tmp/scaleverifier-task")
             return 0
 
         if args.subcommand == "replay":

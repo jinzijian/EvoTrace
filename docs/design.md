@@ -6,6 +6,11 @@ ScaleVerifier exists to answer a narrow question:
 
 The compiler uses four principles.
 
+Before compilation, V0.2 adds two local stages: an incremental importer and an evidence-based curator. The importer
+normalizes Claude Code and Codex histories without copying raw logs. The curator separates preference candidates
+from execution-verifiable candidates and records the concrete signals behind every label. It is deliberately a
+deterministic heuristic in V0.2, not a hidden model judge.
+
 ## 1. Preserve the starting state
 
 A task is not only a prompt. It is a prompt plus the state in which the request was made. ScaleVerifier records
@@ -51,6 +56,8 @@ fixtures, side-effect assertions, performance constraints, and task-specific inv
 - A compiled bundle contains code and must be treated as sensitive until reviewed.
 - Restoring a bundle extracts files but does not install dependencies.
 - Running a verifier executes shell commands from the bundle.
-- Running a benchmark executes the supplied agent command.
+- Host-side execution of a supplied agent command is prohibited; `benchmark --agent` is rejected.
+- A future autonomous curator/builder/candidate agent must run only inside the container boundary defined by
+  [`sandbox-contract.md`](sandbox-contract.md).
 
 Do not restore, verify, or benchmark an untrusted bundle outside an isolated environment.
