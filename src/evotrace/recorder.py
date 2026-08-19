@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import pty
 import queue
 import subprocess
 import sys
@@ -81,6 +80,10 @@ def _record_piped_process(command: Sequence[str], repo: Path, events_path: Path)
 
 
 def _record_pty_process(command: Sequence[str], repo: Path, events_path: Path) -> int:
+    # `pty` imports `termios` and is unavailable on Windows. Keep it lazy so the
+    # rest of the CLI, including history import and mining, stays cross-platform.
+    import pty
+
     master, slave = pty.openpty()
     process = subprocess.Popen(
         list(command), cwd=repo, stdin=None, stdout=slave, stderr=slave, close_fds=True
