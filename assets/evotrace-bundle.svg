@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">EvoTrace build output</title>
+  <desc id="desc">An example terminal showing EvoTrace compiling a mined coding session into a task, environment, verifier, and sandbox policy bundle.</desc>
+  <rect width="1100" height="620" rx="20" fill="#0d1117"/>
+  <rect x="1" y="1" width="1098" height="618" rx="19" fill="none" stroke="#30363d" stroke-width="2"/>
+  <circle cx="30" cy="28" r="7" fill="#ff5f56"/>
+  <circle cx="54" cy="28" r="7" fill="#ffbd2e"/>
+  <circle cx="78" cy="28" r="7" fill="#27c93f"/>
+  <text x="550" y="34" text-anchor="middle" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">EvoTrace — executable eval bundle</text>
+  <line x1="0" y1="55" x2="1100" y2="55" stroke="#30363d"/>
+  <line x1="575" y1="82" x2="575" y2="545" stroke="#30363d"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <text x="34" y="98" fill="#58a6ff" font-size="20">$</text>
+    <text x="58" y="98" fill="#f0f6fc" font-size="20">evotrace build codex-parser-fix</text>
+
+    <text x="34" y="147" fill="#8b949e" font-size="15">SESSION</text>
+    <text x="378" y="147" fill="#8b949e" font-size="15">STATUS</text>
+    <text x="34" y="181" fill="#c9d1d9" font-size="16">codex-parser-fix</text>
+    <text x="378" y="181" fill="#3fb950" font-size="16">built ✓</text>
+
+    <rect x="34" y="218" width="500" height="132" rx="12" fill="#161b22" stroke="#30363d"/>
+    <text x="55" y="251" fill="#d2a8ff" font-size="15">TASK</text>
+    <text x="55" y="281" fill="#f0f6fc" font-size="16">Fix parser recovery after a failed</text>
+    <text x="55" y="307" fill="#f0f6fc" font-size="16">delimiter edit without regressing tests.</text>
+    <text x="55" y="334" fill="#8b949e" font-size="14">source: human-corrected trajectory</text>
+
+    <text x="34" y="398" fill="#3fb950" font-size="17">✓ task recovered</text>
+    <text x="34" y="432" fill="#3fb950" font-size="17">✓ Git base reconstructed</text>
+    <text x="34" y="466" fill="#3fb950" font-size="17">✓ verifier command recovered</text>
+    <text x="34" y="500" fill="#3fb950" font-size="17">✓ Docker policy attached</text>
+
+    <text x="612" y="98" fill="#58a6ff" font-size="18">~/.evotrace/benchmarks/</text>
+    <text x="612" y="128" fill="#f0f6fc" font-size="18">codex-parser-fix/</text>
+    <text x="638" y="166" fill="#c9d1d9" font-size="17">├── task.md</text>
+    <text x="638" y="198" fill="#c9d1d9" font-size="17">├── task.json</text>
+    <text x="638" y="230" fill="#c9d1d9" font-size="17">├── verifier.py</text>
+    <text x="638" y="262" fill="#c9d1d9" font-size="17">├── verifier.json</text>
+    <text x="638" y="294" fill="#c9d1d9" font-size="17">├── sandbox-policy.json</text>
+    <text x="638" y="326" fill="#c9d1d9" font-size="17">├── Dockerfile</text>
+    <text x="638" y="358" fill="#c9d1d9" font-size="17">├── setup.sh</text>
+    <text x="638" y="390" fill="#c9d1d9" font-size="17">├── environment/</text>
+    <text x="670" y="422" fill="#8b949e" font-size="16">│   ├── base.tar.gz</text>
+    <text x="670" y="454" fill="#8b949e" font-size="16">│   └── environment.json</text>
+    <text x="638" y="486" fill="#c9d1d9" font-size="17">└── patches/</text>
+    <text x="670" y="518" fill="#8b949e" font-size="16">    └── reference.patch</text>
+
+    <rect x="34" y="558" width="1032" height="38" rx="10" fill="#13233a"/>
+    <text x="550" y="583" text-anchor="middle" fill="#79c0ff" font-size="15">task + environment + verifier + provenance — ready for review and replay</text>
+  </g>
+</svg>

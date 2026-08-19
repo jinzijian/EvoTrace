@@ -71,20 +71,11 @@ EvoTrace 直接配合开发者已经在使用的 agent，不需要代理层、�
 
 ## 工作原理
 
-```text
-Claude Code / Codex history
-            +
-       本地 Git 考古
-            ↓
-      统一 trajectory
-            ↓
-       本地 curator
-       ┌────┴─────┐
-       ↓          ↓
- preference    executable
- DPO / SFT     task + env
- QA / pairs    Docker + verifier
-```
+<p align="center">
+  <img src="assets/evotrace-pipeline.svg" alt="Claude Code 和 Codex 历史通过本地 pipeline 变成训练、评测与验证资产" width="980">
+</p>
+
+<p align="center"><sub>宿主侧 pipeline 坚持 local-first；autonomous agent 只能在临时 Docker workspace 内工作。</sub></p>
 
 ## 核心流程
 
@@ -158,6 +149,12 @@ evotrace build SESSION_ID \
 Transcript 本身不等于完整 environment。Builder 会把 session evidence 与本地 Git archaeology 合并：优先
 使用 session 记录的 commit，否则尝试按时间查找 commit，并明确记录 reconstruction confidence，而不是假装
 恢复结果完全准确。产物包括：
+
+<p align="center">
+  <img src="assets/evotrace-bundle.svg" alt="EvoTrace build 输出与生成的 eval bundle 示例" width="920">
+</p>
+
+<p align="center"><sub>Build 输出示例；每个恢复出的 task 与 verifier 都保留可检查的 provenance。</sub></p>
 
 ```text
 benchmark-id/

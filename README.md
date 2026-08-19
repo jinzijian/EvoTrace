@@ -71,20 +71,11 @@ curator is deterministic and auditable: it does not call an LLM or upload sessio
 
 ## How it works
 
-```text
-Claude Code / Codex history
-            +
-      local Git archaeology
-            ↓
-     normalized trajectory
-            ↓
-        local curator
-       ┌────┴─────┐
-       ↓          ↓
- preference    executable
- DPO / SFT     task + env
- QA / pairs    Docker + verifier
-```
+<p align="center">
+  <img src="assets/evotrace-pipeline.svg" alt="Claude Code and Codex histories become training, evaluation, and verification assets through a local pipeline" width="980">
+</p>
+
+<p align="center"><sub>The host-side pipeline is local-first. Autonomous work is restricted to an ephemeral Docker workspace.</sub></p>
 
 ## Core workflow
 
@@ -160,6 +151,12 @@ evotrace build SESSION_ID \
 A history transcript is not a complete environment. The builder combines session evidence with the local Git
 repository: it uses a commit captured by the session when available, otherwise tries a time-aligned Git commit,
 and records reconstruction confidence instead of pretending the result is exact. It then emits:
+
+<p align="center">
+  <img src="assets/evotrace-bundle.svg" alt="Example EvoTrace build output and generated eval bundle" width="920">
+</p>
+
+<p align="center"><sub>Example build output. Every recovered task and verifier retains inspectable provenance.</sub></p>
 
 ```text
 benchmark-id/
