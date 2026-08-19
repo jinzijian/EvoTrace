@@ -36,3 +36,23 @@ jobs:
 
       - name: Build
         run: uv build
+
+  windows-installer:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v10.0.1
+
+      - name: Install through PowerShell entrypoint
+        shell: pwsh
+        env:
+          EVOTRACE_INSTALL_SOURCE: ${{ github.workspace }}
+          UV_TOOL_DIR: ${{ runner.temp }}/evotrace-tools
+          UV_TOOL_BIN_DIR: ${{ runner.temp }}/evotrace-bin
+        run: |
+          ./install.ps1
+          & "$env:UV_TOOL_BIN_DIR/evotrace.exe" --version
