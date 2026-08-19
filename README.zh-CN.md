@@ -86,6 +86,27 @@ EvoTrace 直接配合开发者已经在使用的 agent，不需要代理层、�
 
 <p align="center"><sub>宿主侧 pipeline 坚持 local-first；autonomous agent 只能在临时 Docker workspace 内工作。</sub></p>
 
+## 与 RepoLaunch 的关系
+
+[Microsoft RepoLaunch](https://github.com/microsoft/RepoLaunch) 是 EvoTrace executable-environment 层的主要
+技术灵感来源。RepoLaunch 证明了 agent 可以从 repository 和 base commit 出发，自动产生 Docker environment、
+可复现 build command、test command、test-output parser 和 per-test execution；这些基础设施可以同时服务 SWE
+benchmark 与 agentic SFT/RL。论文见 [RepoLaunch paper](https://arxiv.org/abs/2603.05026)。
+
+EvoTrace 从更上游开始：在 curated task dataset 形成之前，先从真实 Claude Code 与 Codex 工作历史中找出
+值得保留的 task、人工纠正、恢复轨迹和 execution signal，再把它们编译成 learning assets。
+
+| | RepoLaunch | EvoTrace |
+|---|---|---|
+| 起点 | repository、base commit、language 与 task dataset | 本地 agent session 与 repository evidence |
+| 核心工作 | 发现依赖、build、test 与 test parser | 恢复高价值 task、preference、trajectory 与 provenance |
+| 输出 | Docker image、rebuild/test command、结构化 test status | preference 数据与 task/environment/verifier bundle |
+| 复用方式 | SWE benchmark 与 agentic SFT/RL | eval、reward、已验证 RL 数据，以及未来 marketplace/微调 |
+
+计划中的集成边界是：当某个 candidate 无法保守地恢复 build/test environment 时，可以选择使用
+RepoLaunch-compatible environment backend。EvoTrace 继续负责 history import、task selection、trajectory
+curation、provenance、隐私和用户控制的数据分发。当前版本没有 vendoring RepoLaunch 代码。
+
 ## 核心流程
 
 ### `evotrace init`：一条命令完成导入和挖掘
@@ -242,6 +263,7 @@ milestone；当前 `evotrace build` 会生成其完整且可检查的输入。�
 下一步：
 
 - 只在 sandbox 中运行的 curator/builder agent，自动生成 mock 并补全 verifier；
+- 可选的 RepoLaunch-compatible backend，用于跨语言 build、test 与 parser discovery；
 - verifier validation 与 reward-hacking 检查；
 - opt-in 只读 internal adapter 和 record/replay mock；
 - DPO、preference、QA、SFT、RL rollout、execution reward 和 executable eval 导出；

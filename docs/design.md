@@ -61,6 +61,32 @@ The current open-source release builds and inspects these local asset layers. Fu
 surfaces—including a data marketplace and fine-tuning-service integrations—must remain opt-in. Only assets a user
 explicitly reviews and selects may cross the local trust boundary.
 
+## Relationship to RepoLaunch
+
+[Microsoft RepoLaunch](https://github.com/microsoft/RepoLaunch) is the primary technical inspiration for the
+executable-environment portion of this design. RepoLaunch accepts repository metadata and uses an agentic
+setup/verify/organize loop to produce a Docker image, rebuild and test commands, a test-log parser, and structured
+test statuses. EvoTrace begins before that boundary by extracting candidate tasks and learning signals from lived
+Claude Code and Codex sessions.
+
+The planned adapter seam follows RepoLaunch's conceptual input/output contract:
+
+```text
+EvoTrace executable candidate
+  {repo, base_commit, language, created_at, hints}
+                    ↓
+optional environment backend
+                    ↓
+  {image, setup, rebuild, tests, parser, statuses}
+                    ↓
+EvoTrace verifier validation + trajectory/reward assets
+```
+
+This separation avoids rebuilding a cross-language environment agent inside the curator. EvoTrace owns session
+import, task selection, preference/recovery extraction, provenance, privacy, and asset distribution. An optional
+RepoLaunch-compatible backend owns environment setup and build/test discovery. The current release does not vendor
+or invoke RepoLaunch code.
+
 ## Trust boundaries
 
 - A local history is sensitive input.

@@ -87,6 +87,29 @@ curator is deterministic and auditable: it does not call an LLM or upload sessio
 
 <p align="center"><sub>The host-side pipeline is local-first. Autonomous work is restricted to an ephemeral Docker workspace.</sub></p>
 
+## Relationship to RepoLaunch
+
+[Microsoft RepoLaunch](https://github.com/microsoft/RepoLaunch) is a primary technical inspiration for EvoTrace's
+executable-environment layer. RepoLaunch demonstrates that an agent can turn a repository and base commit into a
+Docker environment with reproducible build commands, test commands, test-output parsing, and per-test execution—
+infrastructure that can support both SWE benchmarking and agentic SFT/RL. See the
+[RepoLaunch paper](https://arxiv.org/abs/2603.05026).
+
+EvoTrace starts one layer earlier: before a curated task dataset exists, it mines lived Claude Code and Codex work
+to identify which tasks, corrections, recoveries, and execution signals are worth turning into learning assets.
+
+| | RepoLaunch | EvoTrace |
+|---|---|---|
+| Starting point | repository, base commit, language and task dataset | local agent sessions plus repository evidence |
+| Primary job | discover dependencies, build, tests and test parser | recover valuable tasks, preferences, trajectories and provenance |
+| Output | Docker image, rebuild/test commands and structured test status | preference data and task/environment/verifier bundles |
+| Reuse | SWE benchmarks and agentic SFT/RL | evals, rewards, verified RL data, and future marketplace/fine-tuning |
+
+The planned integration seam is an optional RepoLaunch-compatible environment backend for candidates whose build
+and test environment cannot be recovered conservatively. EvoTrace remains responsible for history import, task
+selection, trajectory curation, provenance, privacy, and user-controlled distribution. No RepoLaunch code is
+vendored in the current release.
+
 ## Core workflow
 
 ### `evotrace init` — import and mine in one command
@@ -251,6 +274,7 @@ Implemented in V0.3:
 Next milestones:
 
 - a sandboxed curator/builder agent that can generate mocks and improve verifier coverage;
+- an optional RepoLaunch-compatible backend for cross-language build, test, and parser discovery;
 - automatic verifier validation and reward-hacking checks;
 - opt-in read-only internal-service adapters and record/replay mocks;
 - export adapters for DPO, preference, QA, SFT, RL rollouts, execution rewards, and executable evals;
