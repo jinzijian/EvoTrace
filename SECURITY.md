@@ -16,6 +16,18 @@ place and is not copied into EvoTrace storage.
 Best-effort redaction covers several common token and credential formats. It is not a data-loss-prevention system
 and must not be treated as a guarantee.
 
+## Future marketplace and training integrations
+
+The data marketplace and fine-tuning integrations described in the roadmap are not part of the current local CLI.
+When introduced, they must preserve these boundaries:
+
+- publishing or licensing an asset is opt-in and requires an explicit user selection;
+- a reviewable manifest must show exactly which task, source snapshot, trajectory, and verifier will leave the device;
+- raw session history is never implicitly uploaded with a derived asset;
+- provenance, ownership, and license metadata travel with every marketplace asset;
+- fine-tuning providers receive only the selected dataset and narrowly scoped credentials;
+- local import and mining continue to work without an account, network access, or hosted service.
+
 ## Bundle contents
 
 A compiled bundle may contain:

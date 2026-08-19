@@ -2,9 +2,9 @@
 
 EvoTrace exists to answer a narrow question:
 
-> How can real coding-agent work become a replayable and verifiable evaluation instance?
+> How can real coding-agent work become reusable, verifiable evaluation and learning assets?
 
-The compiler uses four principles.
+The compiler uses five principles.
 
 Before compilation, V0.3 adds two local stages: an incremental importer and an evidence-based curator. The importer
 normalizes Claude Code and Codex histories without copying raw logs. The curator separates preference candidates
@@ -49,6 +49,17 @@ visible and editable in `verifier.json`; imported histories without a reference 
 
 This is a floor, not a complete reward-hacking defense. Future policies should add test-integrity checks, hidden
 fixtures, side-effect assertions, performance constraints, and task-specific invariants.
+
+## 5. Treat evaluation as a reusable learning substrate
+
+Evaluation and training are not separate sinks. An executable task plus a validated verifier can benchmark an
+agent, provide an RL environment, score newly sampled rollouts, and produce verifier-grounded trajectories for
+subsequent SFT or RL. Raw transcripts are only source material; high-quality training data requires replay,
+validation, provenance, and curation.
+
+The current open-source release builds and inspects these local asset layers. Future distribution and training
+surfaces—including a data marketplace and fine-tuning-service integrations—must remain opt-in. Only assets a user
+explicitly reviews and selects may cross the local trust boundary.
 
 ## Trust boundaries
 

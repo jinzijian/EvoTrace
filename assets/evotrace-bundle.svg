@@ -46,6 +46,6 @@
     <text x="670" y="518" fill="#8b949e" font-size="16">    └── reference.patch</text>
 
     <rect x="34" y="558" width="1032" height="38" rx="10" fill="#13233a"/>
-    <text x="550" y="583" text-anchor="middle" fill="#79c0ff" font-size="15">task + environment + verifier + provenance — ready for review and replay</text>
+    <text x="550" y="583" text-anchor="middle" fill="#79c0ff" font-size="15">task + environment + verifier + provenance — eval today, RL training next</text>
   </g>
 </svg>

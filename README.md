@@ -56,11 +56,21 @@ Prerequisites: Git plus `uv`, `pipx`, or Python 3.9+. Docker is only needed when
 
 ## What you get
 
-| Asset | Recovered from your sessions | Useful for |
+| Asset layer | Recovered or produced | Can power |
 |---|---|---|
-| Training | human corrections, preference pairs, successful recoveries | DPO, SFT, QA, data curation |
-| Evaluation | task intent, repository base, environment evidence | replayable coding-agent evals |
-| Verification | test commands, execution results, behavioral checks | Docker verifiers and execution rewards |
+| Preference and correction data | human edits, rejected/chosen pairs, successful recoveries | DPO, SFT, QA, preference learning |
+| Executable tasks | task intent, repository base, environment evidence | agent evals, regression benchmarks, RL environments |
+| Verifiers and rewards | test commands, execution results, behavioral checks | execution rewards, rollout scoring and filtering |
+| Validated trajectories | rollouts after replay and verifier checks | high-quality, verifier-grounded SFT and RL training data |
+
+These are composable asset layers, not separate silos. The same executable task and verifier can benchmark an
+agent, generate new rollouts, score their outcomes, and feed the verified trajectories back into training. Quality
+comes from executable outcomes and preserved provenance—not from treating every raw transcript as training data.
+
+> [!NOTE]
+> **Product direction:** EvoTrace starts local-first. A future opt-in data marketplace will let users publish or
+> license reviewed assets, and fine-tuning integrations will train on datasets users explicitly select. Nothing
+> is shared by default.
 
 EvoTrace works with the agents developers already use. No proxy, hosted agent, or new editor is required. The V0.3
 curator is deterministic and auditable: it does not call an LLM or upload session data.
@@ -243,7 +253,9 @@ Next milestones:
 - a sandboxed curator/builder agent that can generate mocks and improve verifier coverage;
 - automatic verifier validation and reward-hacking checks;
 - opt-in read-only internal-service adapters and record/replay mocks;
-- export adapters for DPO, preference, QA, SFT, and executable-eval datasets;
+- export adapters for DPO, preference, QA, SFT, RL rollouts, execution rewards, and executable evals;
+- an opt-in data marketplace with review, redaction, provenance, and licensing controls;
+- fine-tuning service integrations for explicitly selected, validated datasets;
 - deduplication, difficulty estimation, and benchmark registries.
 
 See [docs/design.md](docs/design.md) and [docs/schema.md](docs/schema.md) for the data model.

@@ -56,11 +56,20 @@ Docker。`et` 是短命令；旧 CLI 名称继续作为兼容别名保留。
 
 ## 你会得到什么
 
-| 资产 | 从 session 中恢复 | 可以用于 |
+| 资产层 | 恢复或产生的内容 | 可以用于 |
 |---|---|---|
-| 训练 | 人工纠正、preference pair、成功恢复轨迹 | DPO、SFT、QA、数据筛选 |
-| 评测 | 任务意图、repository base、环境证据 | 可重放的 coding-agent eval |
-| 验证 | 测试命令、执行结果、行为检查 | Docker verifier 与 execution reward |
+| Preference 与纠错数据 | 人工修改、rejected/chosen pair、成功恢复轨迹 | DPO、SFT、QA、preference learning |
+| 可执行任务 | 任务意图、repository base、环境证据 | agent eval、回归 benchmark、RL environment |
+| Verifier 与 reward | 测试命令、执行结果、行为检查 | execution reward、rollout 打分与筛选 |
+| 已验证 trajectory | 经过 replay 与 verifier 检查的 rollout | 高质量、verifier-grounded 的 SFT 与 RL 训练数据 |
+
+这些不是互相割裂的终点，而是可以组合的资产层。同一个 executable task 和 verifier 可以先评测 agent，
+再产生新 rollout、对结果打分，并把验证后的 trajectory 重新用于训练。高质量来自可执行 outcome 和完整
+provenance，而不是把每一条原始 transcript 都直接当作训练数据。
+
+> [!NOTE]
+> **产品方向：**EvoTrace 从 local-first 开始。未来会开放 opt-in 数据 marketplace，让用户发布或授权经过
+> 审核的资产；也会接入微调服务，只训练用户明确选择的数据。任何数据默认都不会被分享。
 
 EvoTrace 直接配合开发者已经在使用的 agent，不需要代理层、托管 agent 或新的编辑器。V0.3 curator 是
 确定且可审计的 heuristic：不会调用 LLM，也不会上传 session 数据。
@@ -235,7 +244,9 @@ milestone；当前 `evotrace build` 会生成其完整且可检查的输入。�
 - 只在 sandbox 中运行的 curator/builder agent，自动生成 mock 并补全 verifier；
 - verifier validation 与 reward-hacking 检查；
 - opt-in 只读 internal adapter 和 record/replay mock；
-- DPO、preference、QA、SFT、executable eval 导出；
+- DPO、preference、QA、SFT、RL rollout、execution reward 和 executable eval 导出；
+- 带审核、脱敏、provenance 和授权控制的 opt-in 数据 marketplace；
+- 面向用户明确选择且经过验证的数据集的微调服务集成；
 - 去重、难度估计和 benchmark registry。
 
 数据结构见 [docs/design.md](docs/design.md) 和 [docs/schema.md](docs/schema.md)。
