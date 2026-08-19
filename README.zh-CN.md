@@ -15,10 +15,10 @@
 </div>
 
 <p align="center">
-  <img src="assets/evotrace-terminal.svg" alt="EvoTrace 把本地 agent 历史变成可复用资产" width="900">
+  <img src="assets/evotrace-demo.gif" alt="EvoTrace init 把本地 agent 历史变成可复用资产的动画演示" width="900">
 </p>
 
-<p align="center"><sub>图中数字是示例；真实运行只会展示你本地历史产生的统计。</sub></p>
+<p align="center"><sub>图中数字是示例；真实运行只会展示你本地历史产生的统计。<a href="assets/evotrace-terminal.svg">查看静态版本</a>。</sub></p>
 
 ## ⚡ 快速开始
 

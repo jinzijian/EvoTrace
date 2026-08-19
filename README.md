@@ -15,10 +15,10 @@
 </div>
 
 <p align="center">
-  <img src="assets/evotrace-terminal.svg" alt="EvoTrace turns local agent history into reusable assets" width="900">
+  <img src="assets/evotrace-demo.gif" alt="Animated EvoTrace init demo turning local agent history into reusable assets" width="900">
 </p>
 
-<p align="center"><sub>Illustrative output. EvoTrace reports the counts found in your own local history.</sub></p>
+<p align="center"><sub>Illustrative output. EvoTrace reports the counts found in your own local history. <a href="assets/evotrace-terminal.svg">Static preview</a>.</sub></p>
 
 ## ⚡ Quickstart
 
