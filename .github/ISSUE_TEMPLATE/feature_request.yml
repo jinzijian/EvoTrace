@@ -1,0 +1,26 @@
+name: Feature request
+description: Propose a history adapter, verifier policy, or compiler improvement.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Real workflow problem
+      description: What real coding-agent workflow cannot be compiled or verified today?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and proposed contract
+      description: Describe the available inputs, desired bundle output, and known ambiguity.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy
+      options:
+        - label: I will use only synthetic or reviewed, sanitized examples.
+          required: true

@@ -1,0 +1,58 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scaleverifier"
+version = "0.1.0"
+description = "Turn real coding-agent usage into executable evaluations."
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [
+  {name = "ScaleVerifier contributors"},
+]
+keywords = [
+  "agents",
+  "benchmark",
+  "coding-agents",
+  "evaluation",
+  "reinforcement-learning",
+  "verifier",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "License :: OSI Approved :: Apache Software License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Testing",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/jinzijian/scaleverifier"
+Repository = "https://github.com/jinzijian/scaleverifier"
+Issues = "https://github.com/jinzijian/scaleverifier/issues"
+
+[project.scripts]
+scaleverifier = "scaleverifier.cli:main"
+sv = "scaleverifier.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scaleverifier"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

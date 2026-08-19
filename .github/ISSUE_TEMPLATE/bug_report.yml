@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a reproducible ScaleVerifier problem without sharing private trajectories.
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Do not attach real agent histories, credentials, proprietary code, or unreviewed task bundles.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Use a synthetic repository or sanitized fixture when possible.
+      render: shell
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: ScaleVerifier version
+      placeholder: "scaleverifier --version"
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "macOS 15, Ubuntu 24.04, ..."
