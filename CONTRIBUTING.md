@@ -1,12 +1,12 @@
-# Contributing to ScaleVerifier
+# Contributing to EvoTrace
 
-ScaleVerifier is early. Small, evidence-backed pull requests are easier to review than broad framework rewrites.
+EvoTrace is early. Small, evidence-backed pull requests are easier to review than broad framework rewrites.
 
 ## Development setup
 
 ```bash
-git clone https://github.com/jinzijian/scaleverifier.git
-cd scaleverifier
+git clone https://github.com/jinzijian/evotrace.git
+cd evotrace
 uv sync
 uv run python -m unittest discover -s tests -v
 uvx ruff check src tests

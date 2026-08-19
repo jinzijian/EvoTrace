@@ -3,9 +3,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from scaleverifier.importers import import_claude, import_codex
-from scaleverifier.store import Store
-from scaleverifier.util import load_jsonl
+from evotrace.importers import import_claude, import_codex
+from evotrace.store import Store
+from evotrace.util import load_jsonl
 
 
 def write_jsonl(path, records):

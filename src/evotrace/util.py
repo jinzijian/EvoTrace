@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence
 
-from .errors import ScaleVerifierError
+from .errors import EvoTraceError
 
 
 def utc_now() -> str:
@@ -38,9 +38,9 @@ def read_json(path: Path) -> Dict[str, Any]:
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
-        raise ScaleVerifierError(f"File not found: {path}") from exc
+        raise EvoTraceError(f"File not found: {path}") from exc
     except json.JSONDecodeError as exc:
-        raise ScaleVerifierError(f"Invalid JSON in {path}: {exc}") from exc
+        raise EvoTraceError(f"Invalid JSON in {path}: {exc}") from exc
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -80,13 +80,11 @@ def load_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
                 try:
                     value = json.loads(line)
                 except json.JSONDecodeError as exc:
-                    raise ScaleVerifierError(
-                        f"Invalid JSONL at {path}:{line_number}: {exc}"
-                    ) from exc
+                    raise EvoTraceError(f"Invalid JSONL at {path}:{line_number}: {exc}") from exc
                 if isinstance(value, dict):
                     yield value
     except FileNotFoundError as exc:
-        raise ScaleVerifierError(f"File not found: {path}") from exc
+        raise EvoTraceError(f"File not found: {path}") from exc
 
 
 def run(
@@ -108,14 +106,12 @@ def run(
             timeout=timeout,
         )
     except FileNotFoundError as exc:
-        raise ScaleVerifierError(f"Command not found: {command[0]}") from exc
+        raise EvoTraceError(f"Command not found: {command[0]}") from exc
     except subprocess.TimeoutExpired as exc:
-        raise ScaleVerifierError(
-            f"Command timed out after {timeout}s: {shlex.join(command)}"
-        ) from exc
+        raise EvoTraceError(f"Command timed out after {timeout}s: {shlex.join(command)}") from exc
     if check and result.returncode != 0:
         detail = (result.stderr or result.stdout).strip()
-        raise ScaleVerifierError(
+        raise EvoTraceError(
             f"Command failed ({result.returncode}): {shlex.join(command)}"
             + (f"\n{detail}" if detail else "")
         )
@@ -132,10 +128,10 @@ def console(message: str = "", *, error: bool = False) -> None:
 
 def parse_name_value(value: str, option: str) -> tuple[str, str]:
     if "=" not in value:
-        raise ScaleVerifierError(f"{option} expects NAME=VALUE, got: {value}")
+        raise EvoTraceError(f"{option} expects NAME=VALUE, got: {value}")
     name, item = value.split("=", 1)
     if not name.strip() or not item.strip():
-        raise ScaleVerifierError(f"{option} expects non-empty NAME=VALUE")
+        raise EvoTraceError(f"{option} expects non-empty NAME=VALUE")
     return slugify(name), item.strip()
 
 

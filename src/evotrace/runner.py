@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .errors import ScaleVerifierError
+from .errors import EvoTraceError
 from .gitops import setup_from_bundle
 from .store import Store
 from .util import parse_name_value
@@ -29,15 +29,15 @@ def resolve_bundle(target: str, store: Store) -> Path:
     candidate = store.benchmarks / target
     if candidate.is_dir() and (candidate / "task.json").exists():
         return candidate.resolve()
-    raise ScaleVerifierError(
-        f"Benchmark not found: {target}. Build the session first with `vf build {target}`."
+    raise EvoTraceError(
+        f"Benchmark not found: {target}. Build the session first with `evotrace build {target}`."
     )
 
 
 def verify_candidate(bundle: Path, repo: Path) -> Dict[str, Any]:
     verifier = bundle / "verifier.py"
     if not verifier.exists():
-        raise ScaleVerifierError(f"Bundle has no verifier.py: {bundle}")
+        raise EvoTraceError(f"Bundle has no verifier.py: {bundle}")
     result = subprocess.run(
         [sys.executable, str(verifier), "--repo", str(repo), "--json"],
         text=True,
@@ -47,7 +47,7 @@ def verify_candidate(bundle: Path, repo: Path) -> Dict[str, Any]:
     try:
         report = json.loads(result.stdout)
     except json.JSONDecodeError as exc:
-        raise ScaleVerifierError(
+        raise EvoTraceError(
             f"Verifier did not return JSON:\n{result.stdout}\n{result.stderr}"
         ) from exc
     report["verifier_exit_code"] = result.returncode
@@ -65,6 +65,9 @@ def replay_bundle(
         environment = os.environ.copy()
         environment.update(
             {
+                "EVOTRACE_TASK": task,
+                "EVOTRACE_TASK_FILE": str((bundle / "task.md").resolve()),
+                "EVOTRACE_WORKSPACE": str(workspace),
                 "SCALEVERIFIER_TASK": task,
                 "SCALEVERIFIER_TASK_FILE": str((bundle / "task.md").resolve()),
                 "SCALEVERIFIER_WORKSPACE": str(workspace),
@@ -72,14 +75,14 @@ def replay_bundle(
         )
         result = subprocess.run(shlex.split(command), cwd=workspace, env=environment)
         if result.returncode != 0:
-            raise ScaleVerifierError(f"Replay command exited with status {result.returncode}")
+            raise EvoTraceError(f"Replay command exited with status {result.returncode}")
     return workspace
 
 
 def _score_candidate(bundle: Path, name: str, path: str) -> Dict[str, Any]:
     repo = Path(path).expanduser().resolve()
     if not repo.is_dir():
-        raise ScaleVerifierError(f"Candidate path is not a directory: {repo}")
+        raise EvoTraceError(f"Candidate path is not a directory: {repo}")
     report = verify_candidate(bundle, repo)
     return {
         "name": name,
@@ -103,11 +106,11 @@ def benchmark(
     store: Store,
 ) -> List[Dict[str, Any]]:
     if not agents and not candidates:
-        raise ScaleVerifierError("Provide at least one --candidate NAME=PATH")
+        raise EvoTraceError("Provide at least one --candidate NAME=PATH")
     if agents:
-        raise ScaleVerifierError(
+        raise EvoTraceError(
             "Host agent execution is disabled by the sandbox contract. "
-            "Build the eval with `vf build`, then run the agent inside the generated Docker image."
+            "Build the eval with `evotrace build`, then run the agent inside the generated Docker image."
         )
     results = []
     for value in candidates:

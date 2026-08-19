@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional
 
 from .compiler import compile_session
-from .errors import ScaleVerifierError
+from .errors import EvoTraceError
 from .store import Store
 
 
@@ -24,7 +24,7 @@ def build_mined_candidates(
     extra_commands: Optional[List[str]] = None,
 ) -> List[BuildResult]:
     if limit < 1:
-        raise ScaleVerifierError("--limit must be at least 1")
+        raise EvoTraceError("--limit must be at least 1")
     if session_id:
         session_ids = [session_id]
     else:
@@ -34,8 +34,8 @@ def build_mined_candidates(
             if "execution_verifiable" in item.get("labels", [])
         ][:limit]
         if not session_ids:
-            raise ScaleVerifierError(
-                "No execution-verifiable candidates found. Run `vf mine` first."
+            raise EvoTraceError(
+                "No execution-verifiable candidates found. Run `evotrace mine` first."
             )
     results = []
     for candidate_id in session_ids:
@@ -50,6 +50,6 @@ def build_mined_candidates(
                 store=store,
             )
             results.append(BuildResult(candidate_id, "built", str(bundle)))
-        except ScaleVerifierError as exc:
+        except EvoTraceError as exc:
             results.append(BuildResult(candidate_id, "skipped", error=str(exc)))
     return results

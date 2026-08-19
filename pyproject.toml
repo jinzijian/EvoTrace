@@ -3,14 +3,14 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [project]
-name = "scaleverifier"
-version = "0.2.0"
+name = "evotrace"
+version = "0.3.0"
 description = "Turn every Claude Code and Codex session into reusable training, evaluation, and verification assets."
 readme = "README.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE"}
 authors = [
-  {name = "ScaleVerifier contributors"},
+  {name = "EvoTrace contributors"},
 ]
 keywords = [
   "agents",
@@ -36,17 +36,19 @@ classifiers = [
 dependencies = []
 
 [project.urls]
-Homepage = "https://github.com/jinzijian/scaleverifier"
-Repository = "https://github.com/jinzijian/scaleverifier"
-Issues = "https://github.com/jinzijian/scaleverifier/issues"
+Homepage = "https://github.com/jinzijian/evotrace"
+Repository = "https://github.com/jinzijian/evotrace"
+Issues = "https://github.com/jinzijian/evotrace/issues"
 
 [project.scripts]
-scaleverifier = "scaleverifier.cli:main"
-sv = "scaleverifier.cli:main"
-vf = "scaleverifier.cli:main"
+evotrace = "evotrace.cli:main"
+et = "evotrace.cli:main"
+scaleverifier = "evotrace.cli:main"
+sv = "evotrace.cli:main"
+vf = "evotrace.cli:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/scaleverifier"]
+packages = ["src/evotrace", "src/scaleverifier"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,6 +1,6 @@
 # Security and privacy
 
-ScaleVerifier processes source code, agent conversations, command output, and local file state. Treat this data as
+EvoTrace processes source code, agent conversations, command output, and local file state. Treat this data as
 sensitive.
 
 ## Reporting a vulnerability
@@ -11,7 +11,7 @@ working exploit, private trajectory, credential, or proprietary source code.
 ## Local-first behavior
 
 The open-source CLI does not upload sessions, bundles, source code, or telemetry. Imported raw history is read in
-place and is not copied into ScaleVerifier storage.
+place and is not copied into EvoTrace storage.
 
 Best-effort redaction covers several common token and credential formats. It is not a data-loss-prevention system
 and must not be treated as a guarantee.
@@ -32,17 +32,17 @@ verifier before moving a bundle outside its original trust boundary.
 
 ## Executing untrusted content
 
-`setup.sh`, `verifier.py`, `scaleverifier verify`, and `scaleverifier benchmark` can execute repository or bundle
+`setup.sh`, `verifier.py`, `evotrace verify`, and `evotrace benchmark` can execute repository or bundle
 commands. A malicious task bundle can run arbitrary code with the current user's permissions. Only execute bundles
 you trust, preferably in a disposable container or virtual machine.
 
-Autonomous agent execution on the host is prohibited by the V0.2 sandbox contract. `benchmark --agent` is rejected
+Autonomous agent execution on the host is prohibited by the V0.3 sandbox contract. `benchmark --agent` is rejected
 rather than running a supplied agent command against a host-side checkout. Generated bundles include a non-root
 Dockerfile and `sandbox-policy.json`; the planned orchestrator must additionally enforce no host bind mounts, no
 Docker socket, no privileged mode, no inherited credentials, network disabled by default, dropped capabilities,
 and bounded resources. See [`docs/sandbox-contract.md`](docs/sandbox-contract.md).
 
-`scaleverifier verify` and candidate scoring remain explicit host-side operations and execute verifier commands.
+`evotrace verify` and candidate scoring remain explicit host-side operations and execute verifier commands.
 They should be used only with a bundle and checkout the operator trusts.
 
 ## Recommended sharing checklist

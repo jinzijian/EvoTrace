@@ -6,10 +6,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scaleverifier.history import discover_history, import_discovered_history
-from scaleverifier.miner import mine_store
-from scaleverifier.store import Store
-from scaleverifier.util import load_jsonl, write_json, write_jsonl
+from evotrace.history import discover_history, import_discovered_history
+from evotrace.miner import mine_store
+from evotrace.store import Store
+from evotrace.util import load_jsonl, write_json, write_jsonl
 
 
 def make_jsonl(path, records):

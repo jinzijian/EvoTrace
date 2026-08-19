@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .errors import ScaleVerifierError
+from .errors import EvoTraceError
 from .util import read_json, write_json
 
 
@@ -19,8 +19,15 @@ def find_git_root(start: Optional[Path] = None) -> Optional[Path]:
 class Store:
     def __init__(self, root: Optional[Path] = None) -> None:
         if root is None:
-            configured = os.environ.get("SCALEVERIFIER_HOME")
-            root = Path(configured).expanduser() if configured else Path.home() / ".scaleverifier"
+            configured = os.environ.get("EVOTRACE_HOME") or os.environ.get("SCALEVERIFIER_HOME")
+            current_default = Path.home() / ".evotrace"
+            legacy_default = Path.home() / ".scaleverifier"
+            if configured:
+                root = Path(configured).expanduser()
+            elif legacy_default.exists() and not current_default.exists():
+                root = legacy_default
+            else:
+                root = current_default
         self.root = root.resolve()
         self.sessions = self.root / "sessions"
         self.benchmarks = self.root / "benchmarks"
@@ -37,14 +44,14 @@ class Store:
         if session_id == "latest":
             sessions = self.list_sessions()
             if not sessions:
-                raise ScaleVerifierError("No ScaleVerifier sessions found")
+                raise EvoTraceError("No EvoTrace sessions found")
             return sessions[0][0]
         path = self.sessions / session_id
         if not path.is_dir():
             matches = [item for item in self.sessions.glob(f"{session_id}*") if item.is_dir()]
             if len(matches) == 1:
                 return matches[0]
-            raise ScaleVerifierError(f"Session not found: {session_id}")
+            raise EvoTraceError(f"Session not found: {session_id}")
         return path
 
     def load_session(self, session_id: str) -> tuple[Path, Dict[str, Any]]:
@@ -61,7 +68,7 @@ class Store:
                 continue
             try:
                 result.append((path, read_json(metadata)))
-            except ScaleVerifierError:
+            except EvoTraceError:
                 continue
         return sorted(
             result,
@@ -79,6 +86,6 @@ class Store:
         for path in self.candidates.glob("*.json"):
             try:
                 result.append(read_json(path))
-            except ScaleVerifierError:
+            except EvoTraceError:
                 continue
         return sorted(result, key=lambda item: item.get("score", 0), reverse=True)

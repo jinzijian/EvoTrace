@@ -7,11 +7,12 @@ from os.path import normpath
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-from .errors import ScaleVerifierError
+from .errors import EvoTraceError
 from .store import find_git_root
 from .util import run
 
 DEFAULT_IGNORED_PARTS = {
+    ".evotrace",
     ".scaleverifier",
     ".git",
     ".venv",
@@ -33,7 +34,7 @@ MAX_UNTRACKED_TOTAL_BYTES = 50 * 1024 * 1024
 def require_repo(path: Optional[Path] = None) -> Path:
     repo = find_git_root(path)
     if repo is None:
-        raise ScaleVerifierError("This command must run inside a Git repository")
+        raise EvoTraceError("This command must run inside a Git repository")
     return repo
 
 
@@ -45,7 +46,7 @@ def git(repo: Path, *args: str, check: bool = True) -> str:
 def head_commit(repo: Path) -> str:
     result = run(["git", "rev-parse", "HEAD"], cwd=repo, check=False)
     if result.returncode != 0:
-        raise ScaleVerifierError(
+        raise EvoTraceError(
             "The repository has no commits. Create an initial commit before recording."
         )
     return result.stdout.strip()
@@ -141,7 +142,7 @@ def create_base_archive_binary(repo: Path, commit: str, destination: Path) -> No
         text=True,
     )
     if result.returncode != 0:
-        raise ScaleVerifierError(f"Could not archive base commit {commit}: {result.stderr.strip()}")
+        raise EvoTraceError(f"Could not archive base commit {commit}: {result.stderr.strip()}")
 
 
 def _safe_members(archive: tarfile.TarFile, destination: Path):
@@ -151,7 +152,7 @@ def _safe_members(archive: tarfile.TarFile, destination: Path):
         try:
             target.relative_to(root)
         except ValueError as exc:
-            raise ScaleVerifierError(f"Unsafe path in archive: {member.name}") from exc
+            raise EvoTraceError(f"Unsafe path in archive: {member.name}") from exc
         if member.issym():
             link_target = normpath(str(Path(member.name).parent / member.linkname))
             if (
@@ -159,7 +160,7 @@ def _safe_members(archive: tarfile.TarFile, destination: Path):
                 or link_target == ".."
                 or link_target.startswith("../")
             ):
-                raise ScaleVerifierError(f"Unsafe link in archive: {member.name}")
+                raise EvoTraceError(f"Unsafe link in archive: {member.name}")
         elif member.islnk():
             link_target = normpath(member.linkname)
             if (
@@ -167,11 +168,9 @@ def _safe_members(archive: tarfile.TarFile, destination: Path):
                 or link_target == ".."
                 or link_target.startswith("../")
             ):
-                raise ScaleVerifierError(f"Unsafe link in archive: {member.name}")
+                raise EvoTraceError(f"Unsafe link in archive: {member.name}")
         elif not (member.isfile() or member.isdir()):
-            raise ScaleVerifierError(
-                f"Special files are not allowed in task archives: {member.name}"
-            )
+            raise EvoTraceError(f"Special files are not allowed in task archives: {member.name}")
         yield member
 
 
@@ -187,11 +186,11 @@ def extract_archive(archive_path: Path, destination: Path) -> None:
 
 def initialize_workspace(destination: Path) -> None:
     run(["git", "init", "-q"], cwd=destination)
-    run(["git", "config", "user.email", "scaleverifier@local"], cwd=destination)
-    run(["git", "config", "user.name", "ScaleVerifier"], cwd=destination)
+    run(["git", "config", "user.email", "evotrace@local"], cwd=destination)
+    run(["git", "config", "user.name", "EvoTrace"], cwd=destination)
     run(["git", "add", "-A"], cwd=destination)
     run(
-        ["git", "commit", "-q", "--allow-empty", "-m", "ScaleVerifier base state"],
+        ["git", "commit", "-q", "--allow-empty", "-m", "EvoTrace base state"],
         cwd=destination,
     )
 
@@ -205,9 +204,7 @@ def apply_patch(repo: Path, patch: Path) -> None:
         check=False,
     )
     if result.returncode != 0:
-        raise ScaleVerifierError(
-            f"Could not restore initial patch {patch}: {result.stderr.strip()}"
-        )
+        raise EvoTraceError(f"Could not restore initial patch {patch}: {result.stderr.strip()}")
 
 
 def copy_snapshot(source: Path, destination: Path) -> None:
@@ -218,9 +215,9 @@ def copy_snapshot(source: Path, destination: Path) -> None:
 def setup_from_bundle(bundle: Path, destination: Path) -> Path:
     base = bundle / "environment" / "base.tar.gz"
     if not base.exists():
-        raise ScaleVerifierError(f"Bundle is missing {base.relative_to(bundle)}")
+        raise EvoTraceError(f"Bundle is missing {base.relative_to(bundle)}")
     if destination.exists() and any(destination.iterdir()):
-        raise ScaleVerifierError(f"Destination is not empty: {destination}")
+        raise EvoTraceError(f"Destination is not empty: {destination}")
     extract_archive(base, destination)
     initialize_workspace(destination)
     apply_patch(destination, bundle / "patches" / "initial.patch")

@@ -1,11 +1,11 @@
 # Sandbox contract
 
-ScaleVerifier separates trusted host orchestration from untrusted agent work. The host collector may read local
+EvoTrace separates trusted host orchestration from untrusted agent work. The host collector may read local
 history and Git data because reconstruction requires both. An autonomous curator, environment builder, verifier
 writer, or candidate agent must never receive a writable host checkout.
 
-This document is a normative contract for the planned ScaleVerifier agent runtime. The V0.2 builder emits the
-same policy into every bundle as `sandbox-policy.json`. V0.2 does not yet launch the autonomous runtime and rejects
+This document is a normative contract for the planned EvoTrace agent runtime. The V0.3 builder emits the
+same policy into every bundle as `sandbox-policy.json`. V0.3 does not yet launch the autonomous runtime and rejects
 legacy host-side `benchmark --agent` execution.
 
 ## Allowed host operations
@@ -14,7 +14,7 @@ The trusted, deterministic CLI may:
 
 - read configured Claude Code and Codex history files;
 - read Git objects, refs, metadata, tracked files, and selected untracked files;
-- write normalized records only under a new or existing ScaleVerifier store;
+- write normalized records only under a new or existing EvoTrace store;
 - create a new bundle or unique run directory;
 - ask the Docker daemon to build and start a task image;
 - copy validated output from the container into its unique run directory.

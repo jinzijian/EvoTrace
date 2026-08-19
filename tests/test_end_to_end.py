@@ -6,11 +6,11 @@ import unittest
 from contextlib import contextmanager
 from pathlib import Path
 
-from scaleverifier.compiler import compile_session
-from scaleverifier.errors import ScaleVerifierError
-from scaleverifier.recorder import record_command
-from scaleverifier.runner import benchmark, replay_bundle, verify_candidate
-from scaleverifier.store import Store
+from evotrace.compiler import compile_session
+from evotrace.errors import EvoTraceError
+from evotrace.recorder import record_command
+from evotrace.runner import benchmark, replay_bundle, verify_candidate
+from evotrace.store import Store
 
 
 @contextmanager
@@ -67,7 +67,9 @@ class EndToEndTests(unittest.TestCase):
             self.assertTrue((bundle / "sandbox-policy.json").exists())
             dockerfile = (bundle / "Dockerfile").read_text(encoding="utf-8")
             self.assertIn("USER 65532:65532", dockerfile)
-            with self.assertRaisesRegex(ScaleVerifierError, "sandbox contract"):
+            self.assertIn("/evotrace/task.md", dockerfile)
+            self.assertIn("EVOTRACE_TASK_FILE", dockerfile)
+            with self.assertRaisesRegex(EvoTraceError, "sandbox contract"):
                 benchmark(
                     bundle,
                     agents=["unsafe=echo hello"],

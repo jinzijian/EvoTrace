@@ -1,19 +1,19 @@
 # Design principles
 
-ScaleVerifier exists to answer a narrow question:
+EvoTrace exists to answer a narrow question:
 
 > How can real coding-agent work become a replayable and verifiable evaluation instance?
 
 The compiler uses four principles.
 
-Before compilation, V0.2 adds two local stages: an incremental importer and an evidence-based curator. The importer
+Before compilation, V0.3 adds two local stages: an incremental importer and an evidence-based curator. The importer
 normalizes Claude Code and Codex histories without copying raw logs. The curator separates preference candidates
 from execution-verifiable candidates and records the concrete signals behind every label. It is deliberately a
-deterministic heuristic in V0.2, not a hidden model judge.
+deterministic heuristic in V0.3, not a hidden model judge.
 
 ## 1. Preserve the starting state
 
-A task is not only a prompt. It is a prompt plus the state in which the request was made. ScaleVerifier records
+A task is not only a prompt. It is a prompt plus the state in which the request was made. EvoTrace records
 the base commit, tracked dirty patch, and selected untracked files independently from the observed final state.
 Replay restores only that initial state.
 

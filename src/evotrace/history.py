@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .errors import ScaleVerifierError
+from .errors import EvoTraceError
 from .importers import import_claude, import_codex, import_codex_prompt_history
 from .store import Store
 from .util import read_json, utc_now, write_json
@@ -40,9 +40,9 @@ def _claude_home() -> Path:
 
 def discover_history(source: str = "all", last: Optional[int] = None) -> List[HistoryFile]:
     if source not in {"all", "codex", "claude"}:
-        raise ScaleVerifierError(f"Unsupported history source: {source}")
+        raise EvoTraceError(f"Unsupported history source: {source}")
     if last is not None and last < 1:
-        raise ScaleVerifierError("--last must be at least 1")
+        raise EvoTraceError("--last must be at least 1")
     discovered: List[HistoryFile] = []
     if source in {"all", "codex"}:
         codex_home = _codex_home()
@@ -86,7 +86,7 @@ def import_discovered_history(
     store.initialize()
     files = discover_history(source, last)
     if not files:
-        raise ScaleVerifierError(f"No local {source} session history found")
+        raise EvoTraceError(f"No local {source} session history found")
     summary = ImportSummary(discovered_files=len(files))
     index = _load_index(store)
     file_index = index.setdefault("files", {})

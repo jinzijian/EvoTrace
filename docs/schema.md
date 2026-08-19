@@ -65,7 +65,7 @@ Adapters may omit events that cannot be mapped without copying provider-specific
 
 ## Mined candidate
 
-Each `vf mine` pass writes one JSON record per session under `candidates/`. A record contains a bounded score,
+Each `evotrace mine` pass writes one JSON record per session under `candidates/`. A record contains a bounded score,
 classification labels, human-readable evidence, and the raw signal counts used by the deterministic curator:
 
 ```json
@@ -94,7 +94,7 @@ classification labels, human-readable evidence, and the raw signal counts used b
 environment inference, verifier configuration, and reproducibility evidence. `task.yaml` is a compact interchange
 view for harnesses; consumers that need all fields should use `task.json`.
 
-Every compiled bundle also includes `sandbox-policy.json`. V0.2 records `container_only` execution, an ephemeral
+Every compiled bundle also includes `sandbox-policy.json`. V0.3 records `container_only` execution, an ephemeral
 container copy, no host mounts or Docker socket, no privileged execution, no network by default, and output limited
 to a new run directory. Runtime implementations must enforce rather than merely parse this policy.
 

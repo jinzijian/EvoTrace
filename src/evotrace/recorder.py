@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, TextIO
 
-from .errors import ScaleVerifierError
+from .errors import EvoTraceError
 from .gitops import (
     capture_metadata,
     changed_paths,
@@ -119,7 +119,7 @@ def record_command(
     use_pty: bool = True,
 ) -> tuple[Path, Dict[str, Any]]:
     if not command:
-        raise ScaleVerifierError("No command provided after --")
+        raise EvoTraceError("No command provided after --")
     repo = require_repo()
     target_store = store or Store()
     before = capture_metadata(repo)
@@ -147,7 +147,7 @@ def record_command(
         else:
             exit_code = _record_piped_process(command, repo, events_path)
     except FileNotFoundError as exc:
-        raise ScaleVerifierError(f"Command not found: {command[0]}") from exc
+        raise EvoTraceError(f"Command not found: {command[0]}") from exc
 
     duration = round(time.monotonic() - started, 3)
     append_jsonl(

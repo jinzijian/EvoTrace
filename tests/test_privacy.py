@@ -1,6 +1,6 @@
 import unittest
 
-from scaleverifier.privacy import redact_text
+from evotrace.privacy import redact_text
 
 
 class PrivacyTests(unittest.TestCase):

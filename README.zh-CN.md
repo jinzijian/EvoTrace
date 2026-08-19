@@ -1,6 +1,6 @@
 <div align="center">
 
-# ScaleVerifier
+# EvoTrace
 
 ### 把每一条 Claude Code 和 Codex session，变成可复用的训练、评测与验证资产。
 
@@ -11,7 +11,7 @@
 </div>
 
 每一条 Claude Code 和 Codex session 都不只是聊天历史：里面包含 task intent、human preference、执行证据、
-恢复过程和 verifier signal。ScaleVerifier 把这些原本会流失的轨迹转化成可复用的训练、评测与验证资产，
+恢复过程和 verifier signal。EvoTrace 把这些原本会流失的轨迹转化成可复用的训练、评测与验证资产，
 同时不要求用户更换 coding agent，也不要求请求先经过一个代理层。
 
 ```text
@@ -30,19 +30,19 @@ Claude Code / Codex history
 ```
 
 > [!WARNING]
-> ScaleVerifier 目前是 early alpha。分类标签和自动生成的 verifier 都是证据，不是任务质量或语义正确性的
+> EvoTrace 目前是 early alpha。分类标签和自动生成的 verifier 都是证据，不是任务质量或语义正确性的
 > 证明。用于重要评测或分享之前必须人工检查。
 
 ## 第一天的 magic moment
 
 ```console
-$ vf import
+$ evotrace import
 Found 184 session(s)
 Discovered files             186
 Indexed files                186
 ...
 
-$ vf mine
+$ evotrace mine
 Found                         184
 Useful                        73
 Human corrected               31
@@ -51,49 +51,49 @@ Preference candidates         19
 Recovery trajectories         14
 Low-value / trivial           111
 
-$ vf build
+$ evotrace build
 SESSION                                  STATUS          BUNDLE / REASON
-codex-...                                built           ~/.scaleverifier/benchmarks/codex-...
+codex-...                                built           ~/.evotrace/benchmarks/codex-...
 ```
 
-这里的数字只是 UX 示例；真实运行只会展示你本地历史产生的统计。V0.2 curator 是确定性的可审计 heuristic，
+这里的数字只是 UX 示例；真实运行只会展示你本地历史产生的统计。V0.3 curator 是确定性的可审计 heuristic，
 不会调用 LLM，也不会上传 session 数据。
 
 ## 安装
 
 ```bash
-uv tool install git+https://github.com/jinzijian/scaleverifier.git
-vf doctor
+uv tool install git+https://github.com/jinzijian/evotrace.git
+evotrace doctor
 ```
 
 本地开发：
 
 ```bash
-git clone https://github.com/jinzijian/scaleverifier.git
-cd scaleverifier
+git clone https://github.com/jinzijian/evotrace.git
+cd evotrace
 uv sync
-uv run vf doctor
+uv run evotrace doctor
 ```
 
-项目没有第三方 Python runtime dependency。Git 是必须的；Docker 用于后续隔离执行。`scaleverifier` 和
-`sv` 继续作为 `vf` 的兼容别名。
+项目没有第三方 Python runtime dependency。Git 是必须的；Docker 用于后续隔离执行。`et` 是短命令；
+`scaleverifier`、`vf` 和 `sv` 作为已有安装的兼容别名继续保留。
 
 ## 三个核心命令
 
-### `vf import`：导入已经存在的历史
+### `evotrace import`：导入已经存在的历史
 
 ```bash
 # 自动发现两个来源，导入当前可见的全部 session
-vf import
+evotrace import
 
 # 只导入某一个来源，或限制最近文件数
-vf import codex
-vf import claude --last 20
+evotrace import codex
+evotrace import claude --last 20
 
 # 也可以给出精确文件
-vf import codex ~/.codex/sessions/2026/08/19/rollout-*.jsonl
-vf import codex ~/.codex/history.jsonl
-vf import claude ~/.claude/projects/my-project/session.jsonl
+evotrace import codex ~/.codex/sessions/2026/08/19/rollout-*.jsonl
+evotrace import codex ~/.codex/history.jsonl
+evotrace import claude ~/.claude/projects/my-project/session.jsonl
 ```
 
 Importer 遵循 `$CODEX_HOME` 和 `$CLAUDE_CONFIG_DIR`。对于 Codex，它会区分包含完整事件的 session JSONL
@@ -105,19 +105,19 @@ session transcript 以明文保存在 `~/.claude/projects/`，默认清理窗口
 [Codex CLI resume 文档](https://developers.openai.com/codex/cli/reference)。
 
 Import 默认是增量的：用文件大小和修改时间跳过没有变化的源文件。`--refresh` 可以强制重建索引。原始
-history 只在原位置读取，不会被复制进 ScaleVerifier store。
+history 只在原位置读取，不会被复制进 EvoTrace store。
 
-### `vf mine`：找到值得保留的 experience
+### `evotrace mine`：找到值得保留的 experience
 
 ```bash
-vf mine
-vf mine --source codex --min-score 4
-vf mine --json
+evotrace mine
+evotrace mine --source codex --min-score 4
+evotrace mine --json
 ```
 
-V0.2 只依赖能观测到的证据：是否恢复出非平凡任务、是否调用代码编辑工具、是否运行 test/lint/build、失败
+V0.3 只依赖能观测到的证据：是否恢复出非平凡任务、是否调用代码编辑工具、是否运行 test/lint/build、失败
 之后是否成功、agent 工作后是否出现人工纠正，以及仓库 base 的恢复置信度。每个 candidate 的 score、label、
-signal 和 evidence 都保存在 `~/.scaleverifier/candidates/`。
+signal 和 evidence 都保存在 `~/.evotrace/candidates/`。
 
 - `preference_candidate`：可能形成 rejected/chosen、纠错 pair、DPO、QA 或 SFT 数据；
 - `execution_verifiable`：有代码编辑、验证命令和可恢复的 repository base；
@@ -125,14 +125,14 @@ signal 和 evidence 都保存在 `~/.scaleverifier/candidates/`。
 
 第一版故意不使用 model judge。以后可以把 curator agent 接到相同 schema 后面，但不能抹掉 provenance。
 
-### `vf build`：编译可执行 eval 资产
+### `evotrace build`：编译可执行 eval 资产
 
 ```bash
 # 编译得分最高的 execution-verifiable candidates
-vf build --limit 10
+evotrace build --limit 10
 
 # 编译一个 session，并显式补充可信 verifier
-vf build SESSION_ID \
+evotrace build SESSION_ID \
   --verify "python -m pytest tests/integration -q" \
   --verify "python -m ruff check src"
 ```
@@ -166,9 +166,9 @@ Verifier 的来源始终可见：用户显式提供、trajectory 中恢复、rep
 ## 第二天以后：持续增量 capture
 
 ```bash
-vf watch                 # 每五分钟检查一次，并重新 mine
-vf watch --interval 60
-vf watch --once          # 适合 cron / nightly job
+evotrace watch                 # 每五分钟检查一次，并重新 mine
+evotrace watch --interval 60
+evotrace watch --once          # 适合 cron / nightly job
 ```
 
 Watcher 只读取发生变化的 history 文件，不修改 Claude Code、Codex 或任何源代码仓库。
@@ -185,22 +185,23 @@ agent。每个 bundle 都包含 `sandbox-policy.json` 和非 root Dockerfile。�
 - 只有验证后的结果才能被提升到一个全新、唯一的 host run directory；
 - 内部系统只能通过显式只读 adapter 或 deterministic mock 暴露，绝不提供 production write credential。
 
-因此 V0.2 已经拒绝旧的 `benchmark --agent` 宿主执行方式。安全的 container orchestrator 是下一个 runtime
-milestone；当前 `vf build` 会生成其完整且可检查的输入。已有 candidate checkout 仍可由用户显式执行
-`vf benchmark ... --candidate NAME=PATH` 评分。
+因此 V0.3 已经拒绝旧的 `benchmark --agent` 宿主执行方式。安全的 container orchestrator 是下一个 runtime
+milestone；当前 `evotrace build` 会生成其完整且可检查的输入。已有 candidate checkout 仍可由用户显式执行
+`evotrace benchmark ... --candidate NAME=PATH` 评分。
 
 完整约束见 [sandbox contract](docs/sandbox-contract.md) 和 [SECURITY.md](SECURITY.md)。
 
 ## 存储与隐私
 
-默认 store 是 `~/.scaleverifier/`，也可以用 `$SCALEVERIFIER_HOME` 或 `--home` 修改。
+默认 store 是 `~/.evotrace/`，也可以用 `$EVOTRACE_HOME` 或 `--home` 修改。如果已经存在旧的
+`~/.scaleverifier/`，并且新路径还没有创建，EvoTrace 会自动继续使用旧 store。
 
 - 不需要账号、hosted LLM、API key、遥测、付费流程或数据上传；
 - 统一后的文本会进行 best-effort secret redaction；
 - untracked snapshot 排除 Git-ignored、常见 `.env` 和私钥后缀；
 - 编译 bundle 包含源码，仍可能带有 Git 已跟踪的 secret，检查之前必须把它当作私有资产。
 
-## V0.2 已实现
+## V0.3 已实现
 
 - Claude Code / Codex 全量与增量历史发现；
 - rich session 与 prompt history 的去重优先级；
