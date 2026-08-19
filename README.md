@@ -4,20 +4,72 @@
 
 ### Turn every Claude Code and Codex session into reusable training, evaluation, and verification assets.
 
+[Quickstart](#-quickstart) · [What you get](#what-you-get) · [How it works](#how-it-works) · [Security](#security-model) · [中文](README.zh-CN.md)
+
 [![CI](https://github.com/jinzijian/evotrace/actions/workflows/ci.yml/badge.svg)](https://github.com/jinzijian/evotrace/actions/workflows/ci.yml)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB.svg)](https://www.python.org/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-
-[简体中文](README.zh-CN.md)
 
 **Your agent sessions are not disposable chat logs. They are compounding data assets.**
 
 </div>
 
-Every Claude Code and Codex session contains more than chat history: task intent, human preferences, execution
-evidence, recovery patterns, and verifier signals. EvoTrace turns that exhaust into reusable training,
-evaluation, and verification assets—without asking users to adopt another coding agent or route work through a
-proxy.
+<p align="center">
+  <img src="assets/evotrace-terminal.svg" alt="EvoTrace turns local agent history into reusable assets" width="900">
+</p>
+
+<p align="center"><sub>Illustrative output. EvoTrace reports the counts found in your own local history.</sub></p>
+
+## ⚡ Quickstart
+
+### macOS, Linux, or WSL
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/jinzijian/evotrace/main/install.sh | sh
+```
+
+### Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/jinzijian/evotrace/main/install.ps1 | iex
+```
+
+Then run one command:
+
+```bash
+evotrace init
+```
+
+EvoTrace discovers existing Claude Code and Codex sessions, indexes them locally, and mines useful candidates.
+The installer only installs the CLI—it does not read session data. You can [inspect the Unix installer](install.sh)
+or [the PowerShell installer](install.ps1) before running it.
+
+Already use [`uv`](https://docs.astral.sh/uv/)?
+
+```bash
+uv tool install git+https://github.com/jinzijian/evotrace.git
+evotrace init
+```
+
+Prerequisites: Git plus `uv`, `pipx`, or Python 3.9+. Docker is only needed when running sandboxed execution.
+`et` is the short command; the older CLI names remain compatibility aliases.
+
+## What you get
+
+| Asset | Recovered from your sessions | Useful for |
+|---|---|---|
+| Training | human corrections, preference pairs, successful recoveries | DPO, SFT, QA, data curation |
+| Evaluation | task intent, repository base, environment evidence | replayable coding-agent evals |
+| Verification | test commands, execution results, behavioral checks | Docker verifiers and execution rewards |
+
+EvoTrace works with the agents developers already use. No proxy, hosted agent, or new editor is required. The V0.3
+curator is deterministic and auditable: it does not call an LLM or upload session data.
+
+> [!WARNING]
+> EvoTrace is an early alpha. Mining labels and generated verifiers are evidence, not proof of task quality
+> or semantic correctness. Inspect every eval before relying on it or sharing it.
+
+## How it works
 
 ```text
 Claude Code / Codex history
@@ -34,58 +86,17 @@ Claude Code / Codex history
  QA / pairs    Docker + verifier
 ```
 
-> [!WARNING]
-> EvoTrace is an early alpha. Mining labels and generated verifiers are evidence, not proof of task quality
-> or semantic correctness. Inspect every eval before relying on it or sharing it.
+## Core workflow
 
-## The day-one experience
-
-```console
-$ evotrace import
-Found 184 session(s)
-Discovered files             186
-Indexed files                186
-...
-
-$ evotrace mine
-Found                         184
-Useful                        73
-Human corrected               31
-Execution-verifiable          26
-Preference candidates         19
-Recovery trajectories         14
-Low-value / trivial           111
-
-$ evotrace build
-SESSION                                  STATUS          BUNDLE / REASON
-codex-...                                built           ~/.evotrace/benchmarks/codex-...
-```
-
-The numbers above illustrate the UX; EvoTrace reports the counts found in your own local history. The V0.3
-curator is a deterministic, auditable heuristic. It does not call an LLM or upload session data.
-
-## Install
-
-With [`uv`](https://docs.astral.sh/uv/):
+### `evotrace init` — import and mine in one command
 
 ```bash
-uv tool install git+https://github.com/jinzijian/evotrace.git
-evotrace doctor
+evotrace init
+evotrace init --source codex --last 50
 ```
 
-For development:
-
-```bash
-git clone https://github.com/jinzijian/evotrace.git
-cd evotrace
-uv sync
-uv run evotrace doctor
-```
-
-EvoTrace has no runtime Python dependencies. Git is required; Docker is used for sandboxed execution. `et` is the
-short command; `scaleverifier`, `vf`, and `sv` remain compatibility aliases for existing installations.
-
-## Three commands
+Use `init` on day one. It combines automatic discovery, incremental import, and local mining into a single
+onboarding command. The commands below expose each stage when you want more control.
 
 ### `evotrace import` — index history you already have
 
@@ -184,7 +195,9 @@ evotrace watch --once          # useful in cron or a nightly job
 
 The watcher reads changed history files only. It does not modify Claude Code, Codex, or source repositories.
 
-## Container-only agent boundary
+## Security model
+
+### Container-only agent boundary
 
 The host-side importer and builder may read session files and Git objects, but they never give an autonomous agent
 a writable host checkout. Each bundle contains an explicit `sandbox-policy.json` and a non-root Dockerfile. The
@@ -204,7 +217,7 @@ be scored explicitly with `evotrace benchmark ... --candidate NAME=PATH`.
 
 Read the full [sandbox contract](docs/sandbox-contract.md) and [security model](SECURITY.md).
 
-## Storage and privacy
+### Storage and privacy
 
 The default store is `~/.evotrace/`; override it with `$EVOTRACE_HOME` or `--home`. If an existing
 `~/.scaleverifier/` store is present and the new path does not yet exist, EvoTrace reuses it automatically.
@@ -218,6 +231,7 @@ The default store is `~/.evotrace/`; override it with `$EVOTRACE_HOME` or `--hom
 
 Implemented in V0.3:
 
+- one-command `evotrace init` onboarding and macOS/Linux/WSL/Windows installers;
 - full and incremental Claude Code / Codex history discovery;
 - rich-session versus prompt-history precedence;
 - normalized, redacted local trajectories;
@@ -236,6 +250,22 @@ Next milestones:
 - deduplication, difficulty estimation, and benchmark registries.
 
 See [docs/design.md](docs/design.md) and [docs/schema.md](docs/schema.md) for the data model.
+
+## Community and development
+
+Ask questions, share aggregate results, and propose new history adapters in
+[GitHub Discussions](https://github.com/jinzijian/evotrace/discussions). Report reproducible problems through
+[GitHub Issues](https://github.com/jinzijian/evotrace/issues). Never post raw trajectories or unreviewed bundles.
+
+```bash
+git clone https://github.com/jinzijian/evotrace.git
+cd evotrace
+uv sync
+uv run python -m unittest discover -s tests -v
+uvx ruff check src tests
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for adapter requirements and the pull-request checklist.
 
 ## License
 

@@ -40,6 +40,21 @@ def _parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
+    initialize = subparsers.add_parser(
+        "init", help="Import existing sessions and mine useful assets in one command"
+    )
+    initialize.add_argument("--source", choices=["all", "codex", "claude"], default="all")
+    initialize.add_argument(
+        "--last",
+        type=int,
+        help="Index only the N most recently modified session files",
+    )
+    initialize.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Re-index files even when they are unchanged",
+    )
+
     record = subparsers.add_parser("record", help="Run and record a coding agent")
     record.add_argument("--task", help="Task given to the agent")
     record.add_argument("--agent", help="Agent label (defaults to command name)")
@@ -238,6 +253,28 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = _parser().parse_args(argv)
     store = Store(args.home) if args.home else Store()
     try:
+        if args.subcommand == "init":
+            imported = import_discovered_history(
+                store,
+                source=args.source,
+                last=args.last,
+                incremental=not args.refresh,
+            )
+            mined = mine_store(store, source=args.source)
+            console("EvoTrace is ready.\n")
+            console(f"Sessions indexed              {len(imported.session_ids)}")
+            console(f"New or refreshed files       {imported.processed_files}")
+            console(f"Useful assets                 {mined.useful}")
+            console(f"Preference candidates         {mined.preference_candidates}")
+            console(f"Execution-verifiable          {mined.execution_verifiable}")
+            console(f"Recovery trajectories         {mined.recovery_trajectories}")
+            console("\nEverything stayed local. No model or data upload was used.")
+            if mined.execution_verifiable:
+                console("Next: evotrace build")
+            else:
+                console("Next: evotrace mine --json")
+            return 0
+
         if args.subcommand == "record":
             command = _clean_remainder(args.command)
             session_dir, trajectory = record_command(

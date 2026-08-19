@@ -4,15 +4,72 @@
 
 ### 把每一条 Claude Code 和 Codex session，变成可复用的训练、评测与验证资产。
 
-[English](README.md)
+[快速开始](#-快速开始) · [你会得到什么](#你会得到什么) · [工作原理](#工作原理) · [安全模型](#安全模型) · [English](README.md)
+
+[![CI](https://github.com/jinzijian/evotrace/actions/workflows/ci.yml/badge.svg)](https://github.com/jinzijian/evotrace/actions/workflows/ci.yml)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB.svg)](https://www.python.org/)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 **Agent session 不是用完即弃的聊天记录，而是会持续复利的数据资产。**
 
 </div>
 
-每一条 Claude Code 和 Codex session 都不只是聊天历史：里面包含 task intent、human preference、执行证据、
-恢复过程和 verifier signal。EvoTrace 把这些原本会流失的轨迹转化成可复用的训练、评测与验证资产，
-同时不要求用户更换 coding agent，也不要求请求先经过一个代理层。
+<p align="center">
+  <img src="assets/evotrace-terminal.svg" alt="EvoTrace 把本地 agent 历史变成可复用资产" width="900">
+</p>
+
+<p align="center"><sub>图中数字是示例；真实运行只会展示你本地历史产生的统计。</sub></p>
+
+## ⚡ 快速开始
+
+### macOS、Linux 或 WSL
+
+```bash
+curl -LsSf https://raw.githubusercontent.com/jinzijian/evotrace/main/install.sh | sh
+```
+
+### Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/jinzijian/evotrace/main/install.ps1 | iex
+```
+
+安装后只需运行：
+
+```bash
+evotrace init
+```
+
+EvoTrace 会自动发现已有的 Claude Code 和 Codex session，在本地建立索引并挖掘有价值的候选资产。
+安装脚本只负责安装 CLI，不会读取 session 数据。运行前可以先查看 [Unix 安装脚本](install.sh) 或
+[PowerShell 安装脚本](install.ps1)。
+
+已经在使用 [`uv`](https://docs.astral.sh/uv/)：
+
+```bash
+uv tool install git+https://github.com/jinzijian/evotrace.git
+evotrace init
+```
+
+前置条件是 Git，以及 `uv`、`pipx` 或 Python 3.9+ 中的任意一个。只有执行 sandbox workload 时才需要
+Docker。`et` 是短命令；旧 CLI 名称继续作为兼容别名保留。
+
+## 你会得到什么
+
+| 资产 | 从 session 中恢复 | 可以用于 |
+|---|---|---|
+| 训练 | 人工纠正、preference pair、成功恢复轨迹 | DPO、SFT、QA、数据筛选 |
+| 评测 | 任务意图、repository base、环境证据 | 可重放的 coding-agent eval |
+| 验证 | 测试命令、执行结果、行为检查 | Docker verifier 与 execution reward |
+
+EvoTrace 直接配合开发者已经在使用的 agent，不需要代理层、托管 agent 或新的编辑器。V0.3 curator 是
+确定且可审计的 heuristic：不会调用 LLM，也不会上传 session 数据。
+
+> [!WARNING]
+> EvoTrace 目前是 early alpha。分类标签和自动生成的 verifier 都是证据，不是任务质量或语义正确性的
+> 证明。用于重要评测或分享之前必须人工检查。
+
+## 工作原理
 
 ```text
 Claude Code / Codex history
@@ -29,56 +86,17 @@ Claude Code / Codex history
  QA / pairs    Docker + verifier
 ```
 
-> [!WARNING]
-> EvoTrace 目前是 early alpha。分类标签和自动生成的 verifier 都是证据，不是任务质量或语义正确性的
-> 证明。用于重要评测或分享之前必须人工检查。
+## 核心流程
 
-## 第一天的 magic moment
-
-```console
-$ evotrace import
-Found 184 session(s)
-Discovered files             186
-Indexed files                186
-...
-
-$ evotrace mine
-Found                         184
-Useful                        73
-Human corrected               31
-Execution-verifiable          26
-Preference candidates         19
-Recovery trajectories         14
-Low-value / trivial           111
-
-$ evotrace build
-SESSION                                  STATUS          BUNDLE / REASON
-codex-...                                built           ~/.evotrace/benchmarks/codex-...
-```
-
-这里的数字只是 UX 示例；真实运行只会展示你本地历史产生的统计。V0.3 curator 是确定性的可审计 heuristic，
-不会调用 LLM，也不会上传 session 数据。
-
-## 安装
+### `evotrace init`：一条命令完成导入和挖掘
 
 ```bash
-uv tool install git+https://github.com/jinzijian/evotrace.git
-evotrace doctor
+evotrace init
+evotrace init --source codex --last 50
 ```
 
-本地开发：
-
-```bash
-git clone https://github.com/jinzijian/evotrace.git
-cd evotrace
-uv sync
-uv run evotrace doctor
-```
-
-项目没有第三方 Python runtime dependency。Git 是必须的；Docker 用于后续隔离执行。`et` 是短命令；
-`scaleverifier`、`vf` 和 `sv` 作为已有安装的兼容别名继续保留。
-
-## 三个核心命令
+第一天直接使用 `init`。它把自动发现、增量导入和本地 mining 合并成一个 onboarding 命令；需要精细
+控制时，再使用下面的分阶段命令。
 
 ### `evotrace import`：导入已经存在的历史
 
@@ -173,7 +191,9 @@ evotrace watch --once          # 适合 cron / nightly job
 
 Watcher 只读取发生变化的 history 文件，不修改 Claude Code、Codex 或任何源代码仓库。
 
-## Agent 只能在容器里工作
+## 安全模型
+
+### Agent 只能在容器里工作
 
 宿主侧 importer/builder 可以读取 session 文件和 Git object，但绝不能把可写的宿主 checkout 交给 autonomous
 agent。每个 bundle 都包含 `sandbox-policy.json` 和非 root Dockerfile。硬边界是：
@@ -191,7 +211,7 @@ milestone；当前 `evotrace build` 会生成其完整且可检查的输入。�
 
 完整约束见 [sandbox contract](docs/sandbox-contract.md) 和 [SECURITY.md](SECURITY.md)。
 
-## 存储与隐私
+### 存储与隐私
 
 默认 store 是 `~/.evotrace/`，也可以用 `$EVOTRACE_HOME` 或 `--home` 修改。如果已经存在旧的
 `~/.scaleverifier/`，并且新路径还没有创建，EvoTrace 会自动继续使用旧 store。
@@ -203,6 +223,7 @@ milestone；当前 `evotrace build` 会生成其完整且可检查的输入。�
 
 ## V0.3 已实现
 
+- 一条命令完成 onboarding 的 `evotrace init`，以及 macOS/Linux/WSL/Windows 安装脚本；
 - Claude Code / Codex 全量与增量历史发现；
 - rich session 与 prompt history 的去重优先级；
 - 本地统一、脱敏 trajectory；
@@ -221,6 +242,22 @@ milestone；当前 `evotrace build` 会生成其完整且可检查的输入。�
 - 去重、难度估计和 benchmark registry。
 
 数据结构见 [docs/design.md](docs/design.md) 和 [docs/schema.md](docs/schema.md)。
+
+## 社区与开发
+
+问题讨论、聚合结果分享和新 history adapter 提案请使用
+[GitHub Discussions](https://github.com/jinzijian/evotrace/discussions)；可复现的问题请提交到
+[GitHub Issues](https://github.com/jinzijian/evotrace/issues)。不要公开原始 trajectory 或未经检查的 bundle。
+
+```bash
+git clone https://github.com/jinzijian/evotrace.git
+cd evotrace
+uv sync
+uv run python -m unittest discover -s tests -v
+uvx ruff check src tests
+```
+
+Adapter 约束和 pull-request checklist 见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
 ## License
 

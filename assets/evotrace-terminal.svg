@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="460" viewBox="0 0 1000 460" role="img" aria-labelledby="title desc">
+  <title id="title">EvoTrace quickstart terminal</title>
+  <desc id="desc">An example EvoTrace init run that turns local agent sessions into reusable assets.</desc>
+  <rect width="1000" height="460" rx="18" fill="#0d1117"/>
+  <rect x="1" y="1" width="998" height="458" rx="17" fill="none" stroke="#30363d" stroke-width="2"/>
+  <circle cx="30" cy="28" r="7" fill="#ff5f56"/>
+  <circle cx="54" cy="28" r="7" fill="#ffbd2e"/>
+  <circle cx="78" cy="28" r="7" fill="#27c93f"/>
+  <text x="500" y="34" text-anchor="middle" fill="#8b949e" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16">EvoTrace — local asset compiler</text>
+  <line x1="0" y1="55" x2="1000" y2="55" stroke="#30363d"/>
+
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="21">
+    <text x="34" y="94" fill="#58a6ff">$</text>
+    <text x="58" y="94" fill="#f0f6fc">evotrace init</text>
+    <text x="34" y="132" fill="#8b949e">Scanning ~/.claude and ~/.codex...</text>
+
+    <text x="34" y="178" fill="#3fb950">✓</text>
+    <text x="66" y="178" fill="#f0f6fc">184 sessions indexed</text>
+    <text x="34" y="214" fill="#3fb950">✓</text>
+    <text x="66" y="214" fill="#f0f6fc">73 reusable assets found</text>
+
+    <text x="66" y="256" fill="#d2a8ff">31</text>
+    <text x="112" y="256" fill="#c9d1d9">human-corrected</text>
+    <text x="410" y="256" fill="#d2a8ff">26</text>
+    <text x="456" y="256" fill="#c9d1d9">executable evals</text>
+    <text x="66" y="292" fill="#d2a8ff">19</text>
+    <text x="112" y="292" fill="#c9d1d9">preference candidates</text>
+    <text x="410" y="292" fill="#d2a8ff">14</text>
+    <text x="456" y="292" fill="#c9d1d9">recovery trajectories</text>
+
+    <text x="34" y="350" fill="#3fb950">Everything stayed local.</text>
+    <text x="34" y="386" fill="#8b949e">No model or data upload was used.</text>
+    <text x="34" y="430" fill="#58a6ff">Next:</text>
+    <text x="105" y="430" fill="#f0f6fc">evotrace build</text>
+  </g>
+</svg>

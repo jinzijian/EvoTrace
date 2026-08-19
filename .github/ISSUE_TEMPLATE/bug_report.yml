@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible ScaleVerifier problem without sharing private trajectories.
+description: Report a reproducible EvoTrace problem without sharing private trajectories.
 title: "[Bug]: "
 labels: [bug]
 body:
@@ -25,8 +25,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: ScaleVerifier version
-      placeholder: "scaleverifier --version"
+      label: EvoTrace version
+      placeholder: "evotrace --version"
     validations:
       required: true
   - type: input
