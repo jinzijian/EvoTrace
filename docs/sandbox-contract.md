@@ -4,9 +4,15 @@ EvoTrace separates trusted host orchestration from untrusted agent work. The hos
 history and Git data because reconstruction requires both. An autonomous curator, environment builder, verifier
 writer, or candidate agent must never receive a writable host checkout.
 
-This document is a normative contract for the planned EvoTrace agent runtime. The V0.3 builder emits the
-same policy into every bundle as `sandbox-policy.json`. V0.3 does not yet launch the autonomous runtime and rejects
-legacy host-side `benchmark --agent` execution.
+This document is a normative contract for the planned tool-using EvoTrace agent runtime. The compiler emits the
+same policy into every bundle as `sandbox-policy.json`. EvoTrace's DeepSeek Harness presets expose only fixed domain
+tools: the Curator can import and inspect local evidence, the Builder can invoke deterministic bundle generation,
+and the Validator can invoke fixed Docker validation and inspect saved records. They do not receive generic host
+shell or filesystem tools.
+
+The current release does not yet launch an autonomous environment builder or verifier writer. It rejects legacy
+host-side `benchmark --agent` execution. Generated bundles and verifiers remain candidates until `/validate` records
+independent, conforming two-state Docker evidence for the exact bundle digest.
 
 ## Allowed host operations
 
@@ -46,7 +52,7 @@ A conforming orchestrator must enforce all of the following:
 - a fresh container for every attempt;
 - exact-container cleanup by the trusted orchestrator only.
 
-The generated Dockerfile runs as UID/GID 65532. A future orchestrator should use flags equivalent to:
+The generated Dockerfile and current validation orchestrator run as UID/GID 65532 with flags equivalent to:
 
 ```text
 --network none
@@ -112,4 +118,18 @@ The builder agent may propose a verifier, but it cannot approve its own verifier
 - reject changes to protected tests or verifier policy;
 - preserve all failures and uncertainty in the output manifest.
 
-Until these checks are implemented, a generated verifier remains a candidate that requires human review.
+V0.8 implements the first two-state gate: at least one behavioral verifier check must fail on the base, every check
+must pass on the reference, and the run must preserve the sandbox controls and exact bundle digest. Mutation testing,
+hidden task-specific fixtures, and stronger verifier anti-tampering remain additional gates rather than implied proof.
+
+Self-play calibration adds a second boundary. The solver receives a fresh task-only workspace and never receives the
+reference patch or reference-only snapshot. Its patch is copied into a task image rather than mounted from the host,
+and scoring uses the same no-network, drop-all-capabilities runtime controls. Harness provider access remains
+necessary for inference, so cloud self-play requires explicit `--allow-upload` consent. A verifier overlay may be
+adopted for calibration only after it passes the reference image; it never rewrites the canonical verified bundle.
+
+Execution-experience evolution uses the same separation. The Explorer may edit only a disposable workspace sandbox
+and its instrumentation patch is evidence, never a mutation of the canonical bundle. Saved trajectory capsules omit
+reasoning blocks and redact detected secrets and local absolute paths. Downstream solvers receive only the compressed
+experience packet, start from fresh task-only workspaces, and are scored by the held-out Docker verifier. A same-task
+run is always non-certifying; functional compression requires a separate same-repository held-out asset.

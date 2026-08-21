@@ -18,7 +18,7 @@ from evotrace.store import Store
 
 class BrandingTests(unittest.TestCase):
     def test_primary_and_legacy_namespaces_share_version_and_error_type(self):
-        self.assertEqual(evotrace.__version__, "0.3.2")
+        self.assertEqual(evotrace.__version__, "0.8.0")
         self.assertEqual(scaleverifier.__version__, evotrace.__version__)
         self.assertIs(ScaleVerifierError, EvoTraceError)
         self.assertEqual(_parser().prog, "evotrace")

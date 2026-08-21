@@ -1,0 +1,32 @@
+{
+  "name": "evotrace",
+  "version": "0.8.0",
+  "private": true,
+  "description": "The EvoTrace distribution of DeepSeek Harness",
+  "type": "module",
+  "bin": {
+    "evotrace": "./harness/launcher.mjs",
+    "et": "./harness/launcher.mjs"
+  },
+  "scripts": {
+    "dev": "node ./harness/launcher.mjs",
+    "harness": "node ./harness/launcher.mjs",
+    "harness:setup": "node ./harness/launcher.mjs setup",
+    "harness:doctor": "node ./harness/launcher.mjs doctor",
+    "test:harness": "node --test harness/tests/*.test.mjs"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "packageManager": "pnpm@10.30.1",
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-agent-presets": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-commands": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-persona": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-tool-subagent": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-tool-ask-user": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.8"
+  }
+}

@@ -162,6 +162,11 @@ class MiningTests(unittest.TestCase):
                     {"kind": "tool.result", "data": {"output": "12 passed"}},
                 ],
             )
+            (session / "patches").mkdir()
+            (session / "patches" / "final.patch").write_text(
+                "diff --git a/app.py b/app.py\n",
+                encoding="utf-8",
+            )
             summary = mine_store(store)
             candidate = summary.candidates[0]
             self.assertEqual(summary.total, 1)

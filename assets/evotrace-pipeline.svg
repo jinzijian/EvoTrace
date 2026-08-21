@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
-  <title id="title">EvoTrace local asset pipeline</title>
-  <desc id="desc">Claude Code and Codex histories flow through a local curator into reusable evals, rewards, and verified training data, with an opt-in marketplace and fine-tuning integrations planned.</desc>
+  <title id="title">EvoTrace post-training asset compiler</title>
+  <desc id="desc">Real-world Claude Code and Codex trajectories flow through EvoTrace into trainable, verifiable, marketplace-ready post-training assets.</desc>
   <defs>
     <linearGradient id="curator" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#172554"/>
@@ -17,8 +17,8 @@
   <rect width="1200" height="650" rx="24" fill="#0d1117"/>
   <rect x="1" y="1" width="1198" height="718" rx="23" fill="none" stroke="#30363d" stroke-width="2"/>
 
-  <text x="52" y="62" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30" font-weight="700">Sessions in. Reusable assets out.</text>
-  <text x="52" y="94" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17">Import the tools developers already use. Keep the whole pipeline local.</text>
+  <text x="52" y="62" fill="#f0f6fc" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="30" font-weight="700">Real-world trajectories in. Post-training assets out.</text>
+  <text x="52" y="94" fill="#8b949e" font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="17">Compile lived coding-agent work into assets users can keep, train on, or license.</text>
 
   <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif">
     <rect x="50" y="150" width="260" height="130" rx="16" fill="#161b22" stroke="#6e40c9" stroke-width="2"/>
@@ -40,38 +40,38 @@
 
     <rect x="420" y="180" width="350" height="250" rx="22" fill="url(#curator)" stroke="#58a6ff" stroke-width="2"/>
     <rect x="448" y="204" width="104" height="28" rx="14" fill="#1f6feb"/>
-    <text x="500" y="224" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">LOCAL ONLY</text>
-    <text x="448" y="273" fill="#fff" font-size="27" font-weight="700">EvoTrace curator</text>
+    <text x="500" y="224" text-anchor="middle" fill="#fff" font-size="13" font-weight="700">LOCAL-FIRST</text>
+    <text x="448" y="273" fill="#fff" font-size="27" font-weight="700">EvoTrace Compiler</text>
     <circle cx="457" cy="311" r="4" fill="#79c0ff"/>
     <text x="474" y="317" fill="#dbeafe" font-size="17">normalize trajectories</text>
     <circle cx="457" cy="347" r="4" fill="#79c0ff"/>
     <text x="474" y="353" fill="#dbeafe" font-size="17">recover Git context</text>
     <circle cx="457" cy="383" r="4" fill="#79c0ff"/>
     <text x="474" y="389" fill="#dbeafe" font-size="17">classify observable evidence</text>
-    <text x="742" y="218" text-anchor="end" fill="#a5b4fc" font-size="14">no model call · no upload</text>
+    <text x="742" y="218" text-anchor="end" fill="#a5b4fc" font-size="14">local default · cloud review opt-in</text>
 
     <path d="M770 305 L865 305" fill="none" stroke="#58a6ff" stroke-width="3" marker-end="url(#arrow)"/>
 
     <rect x="875" y="125" width="275" height="115" rx="16" fill="#0f2d1e" stroke="#3fb950" stroke-width="2"/>
-    <text x="902" y="162" fill="#7ee787" font-size="18" font-weight="700">TRAINING DATA</text>
-    <text x="902" y="193" fill="#f0f6fc" font-size="19">preference · SFT · RL</text>
-    <text x="902" y="218" fill="#8b949e" font-size="14">verified trajectories</text>
+    <text x="902" y="162" fill="#7ee787" font-size="18" font-weight="700">POST-TRAINING</text>
+    <text x="902" y="193" fill="#f0f6fc" font-size="19">preference · SFT · DPO</text>
+    <text x="902" y="218" fill="#8b949e" font-size="14">reviewed trajectory assets</text>
 
     <rect x="875" y="260" width="275" height="115" rx="16" fill="#0c2d48" stroke="#58a6ff" stroke-width="2"/>
-    <text x="902" y="297" fill="#79c0ff" font-size="18" font-weight="700">EVALUATION</text>
-    <text x="902" y="328" fill="#f0f6fc" font-size="19">tasks · replay · regression</text>
-    <text x="902" y="353" fill="#8b949e" font-size="14">benchmark or RL environment</text>
+    <text x="902" y="297" fill="#79c0ff" font-size="18" font-weight="700">RL ENVIRONMENTS</text>
+    <text x="902" y="328" fill="#f0f6fc" font-size="19">tasks · sandbox · replay</text>
+    <text x="902" y="353" fill="#8b949e" font-size="14">train and evaluate agents</text>
 
     <rect x="875" y="395" width="275" height="115" rx="16" fill="#352315" stroke="#d29922" stroke-width="2"/>
-    <text x="902" y="432" fill="#e3b341" font-size="18" font-weight="700">VERIFICATION</text>
-    <text x="902" y="463" fill="#f0f6fc" font-size="19">tests · Docker · rewards</text>
+    <text x="902" y="432" fill="#e3b341" font-size="18" font-weight="700">REWARDS</text>
+    <text x="902" y="463" fill="#f0f6fc" font-size="19">verifiers · tests · execution</text>
     <text x="902" y="488" fill="#8b949e" font-size="14">score and filter rollouts</text>
 
     <path d="M1150 452 C1180 452 1180 182 1150 182" fill="none" stroke="#3fb950" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#loop-arrow)"/>
 
     <rect x="50" y="548" width="1100" height="68" rx="12" fill="#21183d" stroke="#6e40c9"/>
-    <text x="600" y="577" text-anchor="middle" fill="#d2a8ff" font-size="17" font-weight="700">FUTURE: RepoLaunch-compatible environment backend</text>
-    <text x="600" y="601" text-anchor="middle" fill="#a5b4fc" font-size="14">opt-in data marketplace · fine-tuning integrations · nothing shared by default</text>
+    <text x="600" y="577" text-anchor="middle" fill="#d2a8ff" font-size="17" font-weight="700">ROADMAP: OPEN EVOTRACE MARKETPLACE</text>
+    <text x="600" y="601" text-anchor="middle" fill="#a5b4fc" font-size="14">license eligible assets · post-training integrations · nothing shared by default</text>
 
     <rect x="50" y="638" width="1100" height="46" rx="12" fill="#161b22" stroke="#30363d"/>
     <text x="600" y="667" text-anchor="middle" fill="#c9d1d9" font-size="16">Read-only host access  ·  autonomous work stays in Docker  ·  network off by default</text>

@@ -2,293 +2,242 @@
 
 # EvoTrace
 
-### 把每一条 Claude Code 和 Codex session，变成可复用的训练、评测与验证资产。
+### 把真实世界的 Claude Code / Codex 轨迹，变成可训练、可验证、可交易的 post-training 资产。
 
-[快速开始](#-快速开始) · [你会得到什么](#你会得到什么) · [工作原理](#工作原理) · [安全模型](#安全模型) · [English](README.md)
+[快速开始](#快速开始) · [为什么需要它](#trajectory-还不是训练数据) · [三个-agent](#三个-agent三条权限边界) · [安全](#安全模型) · [English](README.md)
 
-[![CI](https://github.com/jinzijian/evotrace/actions/workflows/ci.yml/badge.svg)](https://github.com/jinzijian/evotrace/actions/workflows/ci.yml)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB.svg)](https://www.python.org/)
+[![CI](https://github.com/jinzijian/EvoTrace/actions/workflows/ci.yml/badge.svg)](https://github.com/jinzijian/EvoTrace/actions/workflows/ci.yml)
+[![DeepSeek Harness](https://img.shields.io/badge/foundation-DeepSeek%20Harness-6e40c9.svg)](https://github.com/deepseek-ai/deepseek-harness)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-**Agent session 不是用完即弃的聊天记录，而是会持续复利的数据资产。**
+## **可训练 · 可验证 · 可交易**
+
+**面向真实 coding-agent experience 的 local-first 资产编译器。**
 
 </div>
 
 <p align="center">
-  <img src="assets/evotrace-demo.gif" alt="EvoTrace init 把本地 agent 历史变成可复用资产的动画演示" width="900">
+  <img src="assets/evotrace-demo.gif" alt="EvoTrace 把真实 coding-agent 轨迹变成 post-training 资产" width="900">
 </p>
 
-<p align="center"><sub>图中数字是示例；真实运行只会展示你本地历史产生的统计。<a href="assets/evotrace-terminal.svg">查看静态版本</a>。</sub></p>
+## Trajectory 还不是训练数据
 
-## ⚡ 快速开始
+Claude Code 和 Codex 已经产生了大量有价值的真实轨迹：失败尝试、人工纠正、被删掉的实现、恢复路径、测试
+和最终成功的修改。但 raw transcript 仍然缺少稳定的 task boundary、可恢复的 repository state、可重放环境、
+经过验证的 verifier、隐私审核和 provenance。
 
-### macOS、Linux 或 WSL
-
-```bash
-curl -LsSf https://raw.githubusercontent.com/jinzijian/evotrace/main/install.sh | sh
-```
-
-### Windows PowerShell
-
-```powershell
-irm https://raw.githubusercontent.com/jinzijian/evotrace/main/install.ps1 | iex
-```
-
-安装后只需运行：
-
-```bash
-evotrace init
-```
-
-EvoTrace 会自动发现已有的 Claude Code 和 Codex session，在本地建立索引并挖掘有价值的候选资产。
-安装脚本只负责安装 CLI，不会读取 session 数据。运行前可以先查看 [Unix 安装脚本](install.sh) 或
-[PowerShell 安装脚本](install.ps1)。
-
-已经在使用 [`uv`](https://docs.astral.sh/uv/)：
-
-```bash
-uv tool install git+https://github.com/jinzijian/evotrace.git
-evotrace init
-```
-
-前置条件是 Git，以及 `uv`、`pipx` 或 Python 3.9+ 中的任意一个。只有执行 sandbox workload 时才需要
-Docker。`et` 是短命令；旧 CLI 名称继续作为兼容别名保留。
-
-## 你会得到什么
-
-| 资产层 | 恢复或产生的内容 | 可以用于 |
-|---|---|---|
-| Preference 与纠错数据 | 人工修改、rejected/chosen pair、成功恢复轨迹 | DPO、SFT、QA、preference learning |
-| 可执行任务 | 任务意图、repository base、环境证据 | agent eval、回归 benchmark、RL environment |
-| Verifier 与 reward | 测试命令、执行结果、行为检查 | execution reward、rollout 打分与筛选 |
-| 已验证 trajectory | 经过 replay 与 verifier 检查的 rollout | 高质量、verifier-grounded 的 SFT 与 RL 训练数据 |
-
-这些不是互相割裂的终点，而是可以组合的资产层。同一个 executable task 和 verifier 可以先评测 agent，
-再产生新 rollout、对结果打分，并把验证后的 trajectory 重新用于训练。高质量来自可执行 outcome 和完整
-provenance，而不是把每一条原始 transcript 都直接当作训练数据。
-
-> [!NOTE]
-> **产品方向：**EvoTrace 从 local-first 开始。未来会开放 opt-in 数据 marketplace，让用户发布或授权经过
-> 审核的资产；也会接入微调服务，只训练用户明确选择的数据。任何数据默认都不会被分享。
-
-EvoTrace 直接配合开发者已经在使用的 agent，不需要代理层、托管 agent 或新的编辑器。V0.3 curator 是
-确定且可审计的 heuristic：不会调用 LLM，也不会上传 session 数据。
-
-> [!WARNING]
-> EvoTrace 目前是 early alpha。分类标签和自动生成的 verifier 都是证据，不是任务质量或语义正确性的
-> 证明。用于重要评测或分享之前必须人工检查。
-
-## 工作原理
-
-<p align="center">
-  <img src="assets/evotrace-pipeline.svg" alt="Claude Code 和 Codex 历史通过本地 pipeline 变成训练、评测与验证资产" width="980">
-</p>
-
-<p align="center"><sub>宿主侧 pipeline 坚持 local-first；autonomous agent 只能在临时 Docker workspace 内工作。</sub></p>
-
-## 与 RepoLaunch 的关系
-
-[Microsoft RepoLaunch](https://github.com/microsoft/RepoLaunch) 是 EvoTrace executable-environment 层的主要
-技术灵感来源。RepoLaunch 证明了 agent 可以从 repository 和 base commit 出发，自动产生 Docker environment、
-可复现 build command、test command、test-output parser 和 per-test execution；这些基础设施可以同时服务 SWE
-benchmark 与 agentic SFT/RL。论文见 [RepoLaunch paper](https://arxiv.org/abs/2603.05026)。
-
-EvoTrace 从更上游开始：在 curated task dataset 形成之前，先从真实 Claude Code 与 Codex 工作历史中找出
-值得保留的 task、人工纠正、恢复轨迹和 execution signal，再把它们编译成 learning assets。
-
-| | RepoLaunch | EvoTrace |
-|---|---|---|
-| 起点 | repository、base commit、language 与 task dataset | 本地 agent session 与 repository evidence |
-| 核心工作 | 发现依赖、build、test 与 test parser | 恢复高价值 task、preference、trajectory 与 provenance |
-| 输出 | Docker image、rebuild/test command、结构化 test status | preference 数据与 task/environment/verifier bundle |
-| 复用方式 | SWE benchmark 与 agentic SFT/RL | eval、reward、已验证 RL 数据，以及未来 marketplace/微调 |
-
-计划中的集成边界是：当某个 candidate 无法保守地恢复 build/test environment 时，可以选择使用
-RepoLaunch-compatible environment backend。EvoTrace 继续负责 history import、task selection、trajectory
-curation、provenance、隐私和用户控制的数据分发。当前版本没有 vendoring RepoLaunch 代码。
-
-## 核心流程
-
-### `evotrace init`：一条命令完成导入和挖掘
-
-```bash
-evotrace init
-evotrace init --source codex --last 50
-```
-
-第一天直接使用 `init`。它把自动发现、增量导入和本地 mining 合并成一个 onboarding 命令；需要精细
-控制时，再使用下面的分阶段命令。
-
-### `evotrace import`：导入已经存在的历史
-
-```bash
-# 自动发现两个来源，导入当前可见的全部 session
-evotrace import
-
-# 只导入某一个来源，或限制最近文件数
-evotrace import codex
-evotrace import claude --last 20
-
-# 也可以给出精确文件
-evotrace import codex ~/.codex/sessions/2026/08/19/rollout-*.jsonl
-evotrace import codex ~/.codex/history.jsonl
-evotrace import claude ~/.claude/projects/my-project/session.jsonl
-```
-
-Importer 遵循 `$CODEX_HOME` 和 `$CLAUDE_CONFIG_DIR`。对于 Codex，它会区分包含完整事件的 session JSONL
-与较轻的 prompt history；同一个 session 两者都存在时保留信息更丰富的一份。Claude Code 文档说明
-session transcript 以明文保存在 `~/.claude/projects/`，默认清理窗口是 30 天，因此安装后尽快做一次索引
-很重要。参考 [Claude Code session 文档](https://code.claude.com/docs/en/sessions)、
-[Claude Code 数据目录文档](https://code.claude.com/docs/en/claude-directory)、
-[Codex 配置文档](https://developers.openai.com/codex/config-reference) 和
-[Codex CLI resume 文档](https://developers.openai.com/codex/cli/reference)。
-
-Import 默认是增量的：用文件大小和修改时间跳过没有变化的源文件。`--refresh` 可以强制重建索引。原始
-history 只在原位置读取，不会被复制进 EvoTrace store。
-
-### `evotrace mine`：找到值得保留的 experience
-
-```bash
-evotrace mine
-evotrace mine --source codex --min-score 4
-evotrace mine --json
-```
-
-V0.3 只依赖能观测到的证据：是否恢复出非平凡任务、是否调用代码编辑工具、是否运行 test/lint/build、失败
-之后是否成功、agent 工作后是否出现人工纠正，以及仓库 base 的恢复置信度。每个 candidate 的 score、label、
-signal 和 evidence 都保存在 `~/.evotrace/candidates/`。
-
-- `preference_candidate`：可能形成 rejected/chosen、纠错 pair、DPO、QA 或 SFT 数据；
-- `execution_verifiable`：有代码编辑、验证命令和可恢复的 repository base；
-- `recovery_trajectory`：失败或人工纠正之后继续修复并出现恢复工作。
-
-第一版故意不使用 model judge。以后可以把 curator agent 接到相同 schema 后面，但不能抹掉 provenance。
-
-### `evotrace build`：编译可执行 eval 资产
-
-```bash
-# 编译得分最高的 execution-verifiable candidates
-evotrace build --limit 10
-
-# 编译一个 session，并显式补充可信 verifier
-evotrace build SESSION_ID \
-  --verify "python -m pytest tests/integration -q" \
-  --verify "python -m ruff check src"
-```
-
-Transcript 本身不等于完整 environment。Builder 会把 session evidence 与本地 Git archaeology 合并：优先
-使用 session 记录的 commit，否则尝试按时间查找 commit，并明确记录 reconstruction confidence，而不是假装
-恢复结果完全准确。产物包括：
-
-<p align="center">
-  <img src="assets/evotrace-bundle.svg" alt="EvoTrace build 输出与生成的 eval bundle 示例" width="920">
-</p>
-
-<p align="center"><sub>Build 输出示例；每个恢复出的 task 与 verifier 都保留可检查的 provenance。</sub></p>
+EvoTrace 自动补齐中间这层编译过程：
 
 ```text
-benchmark-id/
-├── task.md
-├── task.json
-├── task.yaml
-├── verifier.py
-├── verifier.json
-├── sandbox-policy.json
-├── setup.sh
-├── Dockerfile
-├── environment/
-│   ├── base.tar.gz
-│   ├── environment.json
-│   └── untracked-initial.tar.gz
-└── patches/
-    ├── initial.patch
-    └── reference.patch
+真实世界的 Claude Code / Codex sessions
+                    ↓
+         import + Git/repo archaeology
+                    ↓
+          基于证据的 trajectory mining
+                    ↓
+ preference data  ·  RL environments  ·  execution rewards
+                    ↓
+            本地训练 · 评测 · 授权合格资产
 ```
 
-Verifier 的来源始终可见：用户显式提供、trajectory 中恢复、repository convention 推断，或者明确警告当前
-没有 behavioral verifier。
+同一个 executable task 今天可以评测 agent，明天可以生成和打分新的 rollout，再把 verifier-grounded
+trajectory 用作高质量 RL 数据。未来 opt-in 的 EvoTrace Marketplace 会让用户按自己的条款授权经过审核、
+权利清晰的资产，而不是把 raw history 低价交给数据中间商。
 
-## 第二天以后：持续增量 capture
+EvoTrace 还补上第二个闭环：Explorer 在真实 repo 中自动提出并执行问题，Experience Compressor 把执行轨迹
+压成可复用经验，再让全新的 solver 在 held-out task 上做 baseline / conditioned 对照。压缩质量由下游任务
+是否真的更容易解出来衡量，而不是让另一个 LLM 主观评价 summary 写得好不好。
+
+```text
+真实 repo → execution exploration → trajectory capsule → experience packet
+                                                      ↓
+                     held-out task：baseline vs conditioned solver
+                                                      ↓
+                          Docker reward → 自适应 curriculum
+```
+
+> [!IMPORTANT]
+> Marketplace 和 managed fine-tuning integration 仍是 roadmap。当前开源版本在本地工作；任何数据默认都
+> 不会上传、出售或分享。
+
+## 完全基于 DeepSeek Harness
+
+EvoTrace 现在是 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的专用 distribution，
+不再维护另一套临时 chat/CLI 界面。
+
+DeepSeek Harness 负责 Web/agent shell、session、streaming、slash command、模型设置、credential、approval
+和 plugin runtime。EvoTrace 负责领域层：
+
+- Claude Code / Codex 历史 import；
+- trajectory mining 与 evidence catalog；
+- 一个 Orchestrator，按顺序打开四个最小权限 DeepSeek subagent；
+- 由现有 Python core 驱动的固定、allowlisted compiler tools；
+- EvoTrace 品牌与 onboarding；
+- autonomous execution 必须进入 Docker 的安全契约。
+
+原来的 Python package 变成内部 deterministic compiler sidecar，不再负责产品界面、模型路由或 agent loop。
+
+<p align="center">
+  <img src="assets/evotrace-harness.png" alt="EvoTrace DeepSeek Harness 首页" width="900">
+</p>
+
+## 快速开始
+
+### macOS、Linux、WSL 一键安装
 
 ```bash
-evotrace watch                 # 每五分钟检查一次，并重新 mine
-evotrace watch --interval 60
-evotrace watch --once          # 适合 cron / nightly job
+curl -LsSf https://raw.githubusercontent.com/jinzijian/EvoTrace/main/install.sh | sh
 ```
 
-Watcher 只读取发生变化的 history 文件，不修改 Claude Code、Codex 或任何源代码仓库。
+安装完成后：
+
+```bash
+evotrace
+```
+
+新 session 默认使用 Harness 的 **Full access** 权限 preset。如需改为较窄的 workspace sandbox，可运行
+`DSH_PERMISSION_MODE=workspace-write evotrace`。
+
+### Windows PowerShell 一键安装
+
+```powershell
+irm https://raw.githubusercontent.com/jinzijian/EvoTrace/main/install.ps1 | iex
+evotrace
+```
+
+### 从源码运行
+
+需要 Git、Node.js `22.19+` 或 `24+`、Python `3.9+`；进行隔离执行时还需要 Docker。
+
+```bash
+git clone https://github.com/jinzijian/EvoTrace.git
+cd EvoTrace
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+pnpm install
+pnpm dev
+```
+
+第一次启动：
+
+1. 选择一个 workspace；
+2. 按需在 Settings 中配置 DeepSeek、OpenAI 或 Anthropic；
+3. 输入 `/` 打开 command palette；
+4. 运行 `/init`，索引已有的 Claude Code / Codex history。
+
+产品里的主要命令：
+
+```text
+/init [all|codex|claude]    导入已有历史并刷新 mining
+/candidates                浏览按证据排序的 candidates
+/search payment retry      搜索 task、repo 和 evidence
+/show 1                    检查 provenance 与 readiness gap
+/review 1                  运行四个 agent 的 sequential review pipeline
+/build 1                   编译 Docker-ready asset candidate
+/validate 1                在 Docker 中验证 base 失败、reference 通过
+/calibrate 1               让 DeepSeek 独立求解 5 次，目标通过 2 次
+/harden 1                  派生、验证并 self-play 一个更难的 child task
+/evolve 1 2                探索资产 1，在同 repo 的 held-out 资产 2 上测试压缩经验
+/assets                    查看已编译资产
+/runs                      查看保存的 validation evidence
+/doctor                    检查本地 integration
+```
+
+这些是 Harness 原生 slash command，同时也是 typed agent tools。API Key 只在 Harness Settings 中填写；
+EvoTrace 不接受把 key 写进 slash command，也不会把它记录进 trajectory。
+
+## 一个 Orchestrator，四个顺序 Subagent
+
+`/review <candidate>` 会启动一个 model turn。EvoTrace Orchestrator 必须等前一个 foreground DeepSeek
+Harness child 返回之后，才能启动下一阶段；因此下游拿到的是完整上游证据，而不是四个互不相关的投票。Candidate Gate
+必须先写入一个不可变 route：`direct`、`derived_seed`、`preference_only` 或 `reject`。这个决策与确切
+candidate ID 绑定；build/harden 不能中途换题，validation 也只能作用于 Hardener 真正产出的资产。
+
+| 阶段 | 可以做 | 不可以做 |
+|---|---|---|
+| **Episode Miner** | 切分 coherent episode、统计有效动作 | 用 raw length 充当质量证明、build 或批准 asset |
+| **Candidate Gate** | 判断 value、complexity 与 reconstructability | 修改数据、把所有维度压成一个分数 |
+| **Task Builder / Hardener** | 编译 direct bundle，或通过固定工具派生更难 child | 修改源 checkout、批准自己的 verifier |
+| **Verifier Critic** | 执行固定 Docker validation 与 opt-in self-play；审核 provenance/run | 在宿主执行 verifier、缺证据时认证 |
+
+产品 roster 只暴露 EvoTrace Orchestrator。每个角色都是全新的 foreground one-shot child session，有各自
+的 tool allowlist，且没有继续 delegation 的权限。通用 DSH coding preset 被有意排除，因为它们的宿主访问
+契约与 EvoTrace 不同。
+
+## 产出的资产是什么
+
+| 资产层 | 证据或产物 | 用途 |
+|---|---|---|
+| Preference / correction | 人工修改、rejected/chosen、成功 recovery | DPO、SFT、QA、preference learning |
+| Executable task | task intent、repository base、initial state、environment evidence | agent eval、regression、RL environment |
+| Verifier / reward candidate | test command、check、provenance、sandbox policy | 验证后用于 rollout scoring 与 execution reward |
+| Validated trajectory | replayed rollout 加独立 verifier evidence | 高质量 SFT / RL post-training data |
+| Execution experience | runtime fact、command、code location、failure 与 compression provenance | 通过 held-out 验证后用于 conditioning、curriculum 与训练样本 |
+
+`Mined`、`Buildable`、`bundle generated` 和 `Verified` 是不同状态。历史 session 只有在同时具备有意义的
+task、execution-verifiable route、repository base、至少 medium 的重建置信度、reference patch、可执行的
+verification command 和支持的环境时，才能构建。空 attachment wrapper、low-confidence 重建、缺失 Node
+manifest 都会 fail closed，不再生成弱 bundle。LLM 写出 verifier 不代表已经 `Verified`。
+
+Codex subagent / fork 轨迹仍会连同 parent lineage 保留，用于审计和后续 preference mining；但默认候选列表会隐藏
+它们，避免把一个 parent session 误算成多道独立任务。需要时可用 `/candidates --all` 显式查看。
+
+<p align="center">
+  <img src="assets/evotrace-pipeline.svg" alt="EvoTrace trajectory-to-post-training pipeline" width="980">
+</p>
 
 ## 安全模型
 
-### Agent 只能在容器里工作
+- Importer 读取 Claude Code / Codex history 和 Git evidence，但不修改源文件；
+- Orchestrator 与叶子 subagent 只暴露固定领域操作，不提供任意宿主 shell 或 filesystem tool；
+- launcher 默认关闭 DSH telemetry，除非用户显式覆盖；
+- 产品数据位于 `~/.evotrace/`，Harness 状态隔离在 `~/.evotrace/harness/`；
+- Verifier validation 在全新 Docker world 中完成：禁止源仓库 bind
+  mount、Docker socket、host network、privileged、宿主 credential 和任意 output path；
+- Builder 与 Verifier Critic 是不同 child session；Builder 不能批准自己的 verifier。
+- `/review` 强制顺序执行：Episode Miner → Candidate Gate → Task Builder/Hardener → Verifier Critic。
+- `/calibrate` 需要显式同意，因为 task context 会发送给已配置的 DeepSeek provider。每次 attempt 都从全新的 task-only workspace 开始，不包含 reference；最终评分在无 host mount 的 Docker 中完成。
+- `/evolve` 同样需要显式同意。Explorer 只在一次性 workspace sandbox 内工作；保存的 capsule 排除 hidden reasoning，并做 secret/absolute-path redaction；下游 solver 看不到 raw capsule，patch 最终在 Docker 中评分。
+- Explorer、Compressor 和每个 paired solver attempt 都必须通过 workspace-boundary access audit，结果才可能被认证。
 
-宿主侧 importer/builder 可以读取 session 文件和 Git object，但绝不能把可写的宿主 checkout 交给 autonomous
-agent。每个 bundle 都包含 `sandbox-policy.json` 和非 root Dockerfile。硬边界是：
+规范见 [sandbox contract](docs/sandbox-contract.md) 与 [design](docs/design.md)。
 
-- 源代码以 archive 复制进 image，而不是可写 bind mount；
-- 不挂 Docker socket，不使用 privileged/host PID，不传宿主 credentials；
-- runtime 默认断网、drop Linux capabilities、禁止 new privileges；
-- agent 可以随意修改或删除容器里的 `/workspace` 副本；
-- 只有验证后的结果才能被提升到一个全新、唯一的 host run directory；
-- 内部系统只能通过显式只读 adapter 或 deterministic mock 暴露，绝不提供 production write credential。
+> [!WARNING]
+> EvoTrace 仍是 early alpha，DeepSeek Harness 也处在 developer preview。Mining label 和生成的 verifier
+> candidate 是 evidence，不是证明。训练或分享前必须人工检查。
 
-因此 V0.3 已经拒绝旧的 `benchmark --agent` 宿主执行方式。安全的 container orchestrator 是下一个 runtime
-milestone；当前 `evotrace build` 会生成其完整且可检查的输入。已有 candidate checkout 仍可由用户显式执行
-`evotrace benchmark ... --candidate NAME=PATH` 评分。
+## 当前进度
 
-完整约束见 [sandbox contract](docs/sandbox-contract.md) 和 [SECURITY.md](SECURITY.md)。
+V0.8 已包含：
 
-### 存储与隐私
+- 真正的 DeepSeek Harness Web app，以及 EvoTrace 标题、mark、onboarding 和 provider settings；
+- 一个 managed EvoTrace Orchestrator，以及四个 foreground、最小权限 subagent role；
+- 原生 `/init`、`/import`、`/mine`、`/candidates`、`/search`、`/show`、`/review`、`/build`、`/harden`、`/validate`、`/calibrate`、`/evolve`、`/assets`、`/runs`、`/doctor`；
+- Claude Code / Codex import、edit-event reference reconstruction、deterministic mining、bundle generation、provenance 与 privacy gate；
+- fail-closed 构建准入、基于 command 的 Python / Node 环境推断，以及默认去重顶层 session 与 Codex nested subagent；
+- 不可变的 `/review` route token 和 produced-asset lineage，阻止下游阶段换 candidate 执行；
+- Docker-only 双状态 verifier validation：behavioral verifier 必须拒绝 base、接受 reference；
+- 与精确 bundle digest 绑定的 immutable run evidence；只有合规 Docker run 才会把资产提升为 `Verified`。
+- DeepSeek self-play 难度校准：5 次独立求解、目标通过数、自动增加或删除 hint、只在 reference 通过后采用的 verifier overlay，以及无法诚实调到目标区间时明确标记 `too_easy` / `too_hard`。
+- execution-experience evolution：自动 runtime exploration、grounded trajectory compression、baseline / conditioned paired held-out solving、Docker reward、utility 估计与 curriculum feedback。
 
-默认 store 是 `~/.evotrace/`，也可以用 `$EVOTRACE_HOME` 或 `--home` 修改。如果已经存在旧的
-`~/.scaleverifier/`，并且新路径还没有创建，EvoTrace 会自动继续使用旧 store。
+`/evolve <source> <held-out>` 只有在两个资产来自同一 repo、且 held-out task 独立构建时，才可能得到可认证的
+functional-compression 结果。不提供第二个资产时会明确标成 `smoke_only`：它只能证明链路跑通，不能把同题
+信息泄漏误报为 transferable experience。
 
-- 不需要账号、hosted LLM、API key、遥测、付费流程或数据上传；
-- 统一后的文本会进行 best-effort secret redaction；
-- untracked snapshot 排除 Git-ignored、常见 `.env` 和私钥后缀；
-- 编译 bundle 包含源码，仍可能带有 Git 已跟踪的 secret，检查之前必须把它当作私有资产。
+仍在继续：
 
-## V0.3 已实现
+- 更广泛的跨语言 dependency repair 与 autonomous environment-builder loop；
+- 自动生成独立 held-out task，以及对移除全部合法 hint 后仍然过于简单的资产进行 adversarial semantic mutation；
+- 经过验证的 DPO / SFT / RL dataset exporter；
+- opt-in Marketplace 与 fine-tuning service integration。
 
-- 一条命令完成 onboarding 的 `evotrace init`，以及 macOS/Linux/WSL/Windows 安装脚本；
-- Claude Code / Codex 全量与增量历史发现；
-- rich session 与 prompt history 的去重优先级；
-- 本地统一、脱敏 trajectory；
-- preference、execution、correction、recovery、low-value 的可审计 mining；
-- Git 时间对齐与 reconstruction confidence；
-- task、environment、Dockerfile、verifier bundle；
-- container-only policy、非 root image、禁止 host-agent fallback；
-- V0.1 的 replay、verifier 与已有 candidate 评分。
+## 致谢
 
-下一步：
-
-- 只在 sandbox 中运行的 curator/builder agent，自动生成 mock 并补全 verifier；
-- 可选的 RepoLaunch-compatible backend，用于跨语言 build、test 与 parser discovery；
-- verifier validation 与 reward-hacking 检查；
-- opt-in 只读 internal adapter 和 record/replay mock；
-- DPO、preference、QA、SFT、RL rollout、execution reward 和 executable eval 导出；
-- 带审核、脱敏、provenance 和授权控制的 opt-in 数据 marketplace；
-- 面向用户明确选择且经过验证的数据集的微调服务集成；
-- 去重、难度估计和 benchmark registry。
-
-数据结构见 [docs/design.md](docs/design.md) 和 [docs/schema.md](docs/schema.md)。
-
-## 社区与开发
-
-问题讨论、聚合结果分享和新 history adapter 提案请使用
-[GitHub Discussions](https://github.com/jinzijian/evotrace/discussions)；可复现的问题请提交到
-[GitHub Issues](https://github.com/jinzijian/evotrace/issues)。不要公开原始 trajectory 或未经检查的 bundle。
-
-```bash
-git clone https://github.com/jinzijian/evotrace.git
-cd evotrace
-uv sync
-uv run python -m unittest discover -s tests -v
-uvx ruff check src tests
-```
-
-Adapter 约束和 pull-request checklist 见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 是 application 与 agent foundation；
+- [Microsoft RepoLaunch](https://github.com/microsoft/RepoLaunch) 是 repository-to-environment reconstruction 的
+  主要技术启发。EvoTrace 从更早一层开始：从真实 coding-agent 工作里挖掘 task 与 learning signal。
 
 ## License
 
-Apache License 2.0。
+Apache-2.0，见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。

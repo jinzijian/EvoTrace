@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
+from ..errors import EvoTraceError
 from ..gitops import capture_metadata, git
 from ..privacy import redact
+from ..reconstruction import recover_reference_patch
 from ..store import Store, find_git_root
 from ..util import load_jsonl, read_json, short_id, utc_now, write_jsonl
 
@@ -89,6 +91,7 @@ def save_import(
     verification_commands: List[str],
     store: Store,
     created_at: Optional[str] = None,
+    source_metadata: Optional[Dict[str, Any]] = None,
 ) -> tuple[Path, Dict[str, Any]]:
     store.initialize()
     indexed_at = utc_now()
@@ -104,7 +107,8 @@ def save_import(
     existing = None
     if (session_dir / "trajectory.json").exists():
         existing = read_json(session_dir / "trajectory.json")
-    normalized_events = [redact(event) for event in events]
+    source_events = list(events)
+    normalized_events = [redact(event) for event in source_events]
     existing_count = ((existing or {}).get("import") or {}).get("normalized_events", 0)
     existing_path = ((existing or {}).get("source") or {}).get("path")
     incoming_rank = 0 if source == "codex" and source_path.name == "history.jsonl" else 1
@@ -126,19 +130,44 @@ def save_import(
         return session_dir, existing
     session_dir.mkdir(parents=True, exist_ok=True)
     write_jsonl(session_dir / "events.jsonl", normalized_events)
+    repository = best_repository(cwd, git_data, created_at)
+    try:
+        reference_recovery = recover_reference_patch(
+            session_dir,
+            repository,
+            source_events,
+        )
+    except (EvoTraceError, OSError) as exc:
+        reference_recovery = {
+            "status": "unavailable",
+            "reason": str(exc),
+        }
+    source = {
+        "kind": "history_import",
+        "agent": source,
+        "path": str(source_path),
+        "source_session_id": source_session_id,
+    }
+    source.update(source_metadata or {})
     trajectory = {
         "schema_version": "0.1",
         "session_id": session_id,
         "created_at": created_at or utc_now(),
-        "source": {
-            "kind": "history_import",
-            "agent": source,
-            "path": str(source_path),
-            "source_session_id": source_session_id,
-        },
+        "source": source,
         "task": {"text": task, "source": "history" if task else "missing"},
-        "repository": best_repository(cwd, git_data, created_at),
-        "snapshots": {"initial": {}, "final": {}},
+        "repository": repository,
+        "snapshots": {
+            "initial": {
+                "patch": "patches/initial.patch",
+                "source": "clean_base_commit",
+            },
+            "final": {
+                "patch": "patches/final.patch",
+                "source": "edit_event_replay",
+                "changed_paths": reference_recovery.get("changed_paths", []),
+                "recovery": reference_recovery,
+            },
+        },
         "verification": {"commands": verification_commands},
         "outcome": {"status": "imported", "exit_code": None},
         "privacy": {

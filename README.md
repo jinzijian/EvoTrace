@@ -2,304 +2,249 @@
 
 # EvoTrace
 
-### Turn every Claude Code and Codex session into reusable training, evaluation, and verification assets.
+### Turn real-world Claude Code and Codex trajectories into trainable, verifiable, and tradable post-training assets.
 
-[Quickstart](#-quickstart) · [What you get](#what-you-get) · [How it works](#how-it-works) · [Security](#security-model) · [中文](README.zh-CN.md)
+[Quickstart](#quickstart) · [Why](#a-trajectory-is-not-yet-training-data) · [Agents](#three-agents-three-trust-boundaries) · [Security](#security) · [中文](README.zh-CN.md)
 
-[![CI](https://github.com/jinzijian/evotrace/actions/workflows/ci.yml/badge.svg)](https://github.com/jinzijian/evotrace/actions/workflows/ci.yml)
-[![Python 3.9+](https://img.shields.io/badge/python-3.9%2B-3776AB.svg)](https://www.python.org/)
+[![CI](https://github.com/jinzijian/EvoTrace/actions/workflows/ci.yml/badge.svg)](https://github.com/jinzijian/EvoTrace/actions/workflows/ci.yml)
+[![DeepSeek Harness](https://img.shields.io/badge/foundation-DeepSeek%20Harness-6e40c9.svg)](https://github.com/deepseek-ai/deepseek-harness)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-**Your agent sessions are not disposable chat logs. They are compounding data assets.**
+## **Trainable · Verifiable · Tradable**
+
+**The local-first compiler for real-world coding-agent experience.**
 
 </div>
 
 <p align="center">
-  <img src="assets/evotrace-demo.gif" alt="Animated EvoTrace init demo turning local agent history into reusable assets" width="900">
+  <img src="assets/evotrace-demo.gif" alt="EvoTrace turns real-world coding-agent trajectories into post-training assets" width="900">
 </p>
 
-<p align="center"><sub>Illustrative output. EvoTrace reports the counts found in your own local history. <a href="assets/evotrace-terminal.svg">Static preview</a>.</sub></p>
+## A trajectory is not yet training data
 
-## ⚡ Quickstart
+Claude Code and Codex already produce valuable real-world trajectories: failed attempts, human corrections,
+discarded changes, recovery paths, tests, and successful implementations. But a raw transcript still lacks a
+stable task boundary, reconstructable repository state, replayable environment, validated verifier, privacy
+review, and provenance.
 
-### macOS, Linux, or WSL
-
-```bash
-curl -LsSf https://raw.githubusercontent.com/jinzijian/evotrace/main/install.sh | sh
-```
-
-### Windows PowerShell
-
-```powershell
-irm https://raw.githubusercontent.com/jinzijian/evotrace/main/install.ps1 | iex
-```
-
-Then run one command:
-
-```bash
-evotrace init
-```
-
-EvoTrace discovers existing Claude Code and Codex sessions, indexes them locally, and mines useful candidates.
-The installer only installs the CLI—it does not read session data. You can [inspect the Unix installer](install.sh)
-or [the PowerShell installer](install.ps1) before running it.
-
-Already use [`uv`](https://docs.astral.sh/uv/)?
-
-```bash
-uv tool install git+https://github.com/jinzijian/evotrace.git
-evotrace init
-```
-
-Prerequisites: Git plus `uv`, `pipx`, or Python 3.9+. Docker is only needed when running sandboxed execution.
-`et` is the short command; the older CLI names remain compatibility aliases.
-
-## What you get
-
-| Asset layer | Recovered or produced | Can power |
-|---|---|---|
-| Preference and correction data | human edits, rejected/chosen pairs, successful recoveries | DPO, SFT, QA, preference learning |
-| Executable tasks | task intent, repository base, environment evidence | agent evals, regression benchmarks, RL environments |
-| Verifiers and rewards | test commands, execution results, behavioral checks | execution rewards, rollout scoring and filtering |
-| Validated trajectories | rollouts after replay and verifier checks | high-quality, verifier-grounded SFT and RL training data |
-
-These are composable asset layers, not separate silos. The same executable task and verifier can benchmark an
-agent, generate new rollouts, score their outcomes, and feed the verified trajectories back into training. Quality
-comes from executable outcomes and preserved provenance—not from treating every raw transcript as training data.
-
-> [!NOTE]
-> **Product direction:** EvoTrace starts local-first. A future opt-in data marketplace will let users publish or
-> license reviewed assets, and fine-tuning integrations will train on datasets users explicitly select. Nothing
-> is shared by default.
-
-EvoTrace works with the agents developers already use. No proxy, hosted agent, or new editor is required. The V0.3
-curator is deterministic and auditable: it does not call an LLM or upload session data.
-
-> [!WARNING]
-> EvoTrace is an early alpha. Mining labels and generated verifiers are evidence, not proof of task quality
-> or semantic correctness. Inspect every eval before relying on it or sharing it.
-
-## How it works
-
-<p align="center">
-  <img src="assets/evotrace-pipeline.svg" alt="Claude Code and Codex histories become training, evaluation, and verification assets through a local pipeline" width="980">
-</p>
-
-<p align="center"><sub>The host-side pipeline is local-first. Autonomous work is restricted to an ephemeral Docker workspace.</sub></p>
-
-## Relationship to RepoLaunch
-
-[Microsoft RepoLaunch](https://github.com/microsoft/RepoLaunch) is a primary technical inspiration for EvoTrace's
-executable-environment layer. RepoLaunch demonstrates that an agent can turn a repository and base commit into a
-Docker environment with reproducible build commands, test commands, test-output parsing, and per-test execution—
-infrastructure that can support both SWE benchmarking and agentic SFT/RL. See the
-[RepoLaunch paper](https://arxiv.org/abs/2603.05026).
-
-EvoTrace starts one layer earlier: before a curated task dataset exists, it mines lived Claude Code and Codex work
-to identify which tasks, corrections, recoveries, and execution signals are worth turning into learning assets.
-
-| | RepoLaunch | EvoTrace |
-|---|---|---|
-| Starting point | repository, base commit, language and task dataset | local agent sessions plus repository evidence |
-| Primary job | discover dependencies, build, tests and test parser | recover valuable tasks, preferences, trajectories and provenance |
-| Output | Docker image, rebuild/test commands and structured test status | preference data and task/environment/verifier bundles |
-| Reuse | SWE benchmarks and agentic SFT/RL | evals, rewards, verified RL data, and future marketplace/fine-tuning |
-
-The planned integration seam is an optional RepoLaunch-compatible environment backend for candidates whose build
-and test environment cannot be recovered conservatively. EvoTrace remains responsible for history import, task
-selection, trajectory curation, provenance, privacy, and user-controlled distribution. No RepoLaunch code is
-vendored in the current release.
-
-## Core workflow
-
-### `evotrace init` — import and mine in one command
-
-```bash
-evotrace init
-evotrace init --source codex --last 50
-```
-
-Use `init` on day one. It combines automatic discovery, incremental import, and local mining into a single
-onboarding command. The commands below expose each stage when you want more control.
-
-### `evotrace import` — index history you already have
-
-```bash
-# Discover both sources and index all available sessions.
-evotrace import
-
-# Limit or select a source.
-evotrace import codex
-evotrace import claude --last 20
-
-# Import exact files.
-evotrace import codex ~/.codex/sessions/2026/08/19/rollout-*.jsonl
-evotrace import codex ~/.codex/history.jsonl
-evotrace import claude ~/.claude/projects/my-project/session.jsonl
-```
-
-The importer honors `$CODEX_HOME` and `$CLAUDE_CONFIG_DIR`. For Codex it recognizes rich session JSONL files and
-the lighter prompt history separately, keeping the richer copy when both identify the same session. Claude Code
-documents plaintext session transcripts under `~/.claude/projects/` and a default 30-day cleanup window;
-installing EvoTrace early preserves a normalized local index before old transcripts disappear. See the
-[Claude Code session docs](https://code.claude.com/docs/en/sessions),
-[Claude Code data-path docs](https://code.claude.com/docs/en/claude-directory),
-[Codex configuration reference](https://developers.openai.com/codex/config-reference), and
-[Codex CLI resume reference](https://developers.openai.com/codex/cli/reference).
-
-Imports are incremental: unchanged source files are skipped using size and modification-time fingerprints. Use
-`--refresh` to force re-indexing. Raw history files are read in place, never copied into the EvoTrace store.
-
-### `evotrace mine` — find valuable experience
-
-```bash
-evotrace mine
-evotrace mine --source codex --min-score 4
-evotrace mine --json
-```
-
-V0.3 scores only observable signals: non-trivial task text, code-edit calls, verification commands, failed then
-successful checks, human corrections after agent work, and repository reconstruction confidence. Every candidate
-contains its score, labels, signals, and human-readable evidence in `~/.evotrace/candidates/`.
-
-- `preference_candidate`: a likely rejected/chosen or correction pair for DPO, preference, QA, or SFT curation.
-- `execution_verifiable`: code changes plus recovered verification and a reconstructable repository base.
-- `recovery_trajectory`: a failure or correction followed by subsequent repair work.
-
-This deliberately avoids model-judged labels in the first release. A model curator can later sit behind the same
-schema without weakening provenance.
-
-### `evotrace build` — compile executable eval assets
-
-```bash
-# Build the highest-ranked execution-verifiable candidates.
-evotrace build --limit 10
-
-# Build one session and optionally add trusted verifier commands.
-evotrace build SESSION_ID \
-  --verify "python -m pytest tests/integration -q" \
-  --verify "python -m ruff check src"
-```
-
-A history transcript is not a complete environment. The builder combines session evidence with the local Git
-repository: it uses a commit captured by the session when available, otherwise tries a time-aligned Git commit,
-and records reconstruction confidence instead of pretending the result is exact. It then emits:
-
-<p align="center">
-  <img src="assets/evotrace-bundle.svg" alt="Example EvoTrace build output and generated eval bundle" width="920">
-</p>
-
-<p align="center"><sub>Example build output. Every recovered task and verifier retains inspectable provenance.</sub></p>
+EvoTrace compiles that missing layer:
 
 ```text
-benchmark-id/
-├── task.md
-├── task.json
-├── task.yaml
-├── verifier.py
-├── verifier.json
-├── sandbox-policy.json
-├── setup.sh
-├── Dockerfile
-├── environment/
-│   ├── base.tar.gz
-│   ├── environment.json
-│   └── untracked-initial.tar.gz
-└── patches/
-    ├── initial.patch
-    └── reference.patch
+Real-world Claude Code / Codex sessions
+                    ↓
+        import + Git/repo archaeology
+                    ↓
+        evidence-backed trajectory mining
+                    ↓
+ preference data  ·  RL environments  ·  execution rewards
+                    ↓
+       train locally · evaluate · license eligible assets
 ```
 
-Verifier provenance is always visible: explicit user command, trajectory-recovered command, repository convention,
-or a warning that no behavioral verifier was found.
+The same executable task can evaluate an agent today, generate and score new rollouts tomorrow, and become
+high-quality verifier-grounded RL data. The future opt-in EvoTrace Marketplace will let users license reviewed,
+rights-cleared assets on terms they control instead of surrendering raw history to a data intermediary.
 
-## Day two and beyond
+EvoTrace also closes a second loop: an Explorer generates and executes repository questions, an Experience
+Compressor distills the grounded trajectory, and fresh solver attempts test whether that packet improves a truly
+held-out task. Compression is judged by downstream execution success—not by whether an LLM likes the summary.
 
-Keep the local index current without placing EvoTrace in front of either agent:
+```text
+real repo → execution exploration → trajectory capsule → experience packet
+                                                      ↓
+                     held-out task: baseline vs conditioned solver
+                                                      ↓
+                         Docker reward → adaptive curriculum
+```
+
+> [!IMPORTANT]
+> The Marketplace and managed fine-tuning integrations are roadmap products. The current open-source release
+> works locally. Nothing is uploaded, sold, or shared by default.
+
+## Built on DeepSeek Harness
+
+EvoTrace is now a specialized distribution of
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), not a separate ad-hoc chat UI.
+
+DeepSeek Harness supplies the browser/agent shell, sessions, streaming, slash-command surface, provider settings,
+credential storage, approvals, and plugin runtime. EvoTrace supplies the domain composition:
+
+- Claude Code and Codex history import;
+- trajectory mining and evidence catalog;
+- one Orchestrator that opens four least-privilege DeepSeek subagents in sequence;
+- fixed, allowlisted compiler tools backed by the existing Python core;
+- EvoTrace branding and onboarding copy;
+- a Docker-only contract for future autonomous execution.
+
+The Python package is now an internal deterministic compiler sidecar. It no longer owns the product interface,
+model routing, or agent loop.
+
+<p align="center">
+  <img src="assets/evotrace-harness.png" alt="EvoTrace DeepSeek Harness home" width="900">
+</p>
+
+## Quickstart
+
+### One-line install — macOS, Linux, WSL
 
 ```bash
-evotrace watch                 # poll every five minutes and re-run mining
-evotrace watch --interval 60
-evotrace watch --once          # useful in cron or a nightly job
+curl -LsSf https://raw.githubusercontent.com/jinzijian/EvoTrace/main/install.sh | sh
 ```
 
-The watcher reads changed history files only. It does not modify Claude Code, Codex, or source repositories.
-
-## Security model
-
-### Container-only agent boundary
-
-The host-side importer and builder may read session files and Git objects, but they never give an autonomous agent
-a writable host checkout. Each bundle contains an explicit `sandbox-policy.json` and a non-root Dockerfile. The
-contract is:
-
-- source enters as an archive copied into the image, not as a writable bind mount;
-- no Docker socket, privileged mode, host PID namespace, or host credentials;
-- runtime network is off by default, Linux capabilities are dropped, and new privileges are blocked;
-- the agent may freely edit or delete its ephemeral `/workspace` copy;
-- host output is promoted only into a new, unique run directory after validation;
-- internal systems are exposed only through explicit read-only adapters or deterministic mocks—never production
-  write credentials.
-
-For this reason V0.3 rejects legacy `benchmark --agent` host execution. The safe container orchestrator is the next
-runtime milestone; today `evotrace build` produces its complete, inspectable input. Existing candidate checkouts can still
-be scored explicitly with `evotrace benchmark ... --candidate NAME=PATH`.
-
-Read the full [sandbox contract](docs/sandbox-contract.md) and [security model](SECURITY.md).
-
-### Storage and privacy
-
-The default store is `~/.evotrace/`; override it with `$EVOTRACE_HOME` or `--home`. If an existing
-`~/.scaleverifier/` store is present and the new path does not yet exist, EvoTrace reuses it automatically.
-
-- No account, hosted LLM, API key, telemetry endpoint, payment flow, or data upload is required.
-- Normalized text receives best-effort secret redaction.
-- Git-ignored files, common `.env` files, and private-key suffixes are excluded from untracked snapshots.
-- A compiled bundle contains source code and may still contain tracked secrets. Treat it as private until reviewed.
-
-## Current scope
-
-Implemented in V0.3:
-
-- one-command `evotrace init` onboarding and macOS/Linux/WSL/Windows installers;
-- full and incremental Claude Code / Codex history discovery;
-- rich-session versus prompt-history precedence;
-- normalized, redacted local trajectories;
-- auditable preference, execution, correction, recovery, and low-value mining;
-- Git-time reconstruction confidence;
-- task, environment, Dockerfile, and verifier bundle generation;
-- explicit container-only policy with non-root images and no host-agent fallback;
-- replay, verifier execution, and existing-candidate scoring from V0.1.
-
-Next milestones:
-
-- a sandboxed curator/builder agent that can generate mocks and improve verifier coverage;
-- an optional RepoLaunch-compatible backend for cross-language build, test, and parser discovery;
-- automatic verifier validation and reward-hacking checks;
-- opt-in read-only internal-service adapters and record/replay mocks;
-- export adapters for DPO, preference, QA, SFT, RL rollouts, execution rewards, and executable evals;
-- an opt-in data marketplace with review, redaction, provenance, and licensing controls;
-- fine-tuning service integrations for explicitly selected, validated datasets;
-- deduplication, difficulty estimation, and benchmark registries.
-
-See [docs/design.md](docs/design.md) and [docs/schema.md](docs/schema.md) for the data model.
-
-## Community and development
-
-Ask questions, share aggregate results, and propose new history adapters in
-[GitHub Discussions](https://github.com/jinzijian/evotrace/discussions). Report reproducible problems through
-[GitHub Issues](https://github.com/jinzijian/evotrace/issues). Never post raw trajectories or unreviewed bundles.
+Then launch the app:
 
 ```bash
-git clone https://github.com/jinzijian/evotrace.git
-cd evotrace
-uv sync
-uv run python -m unittest discover -s tests -v
-uvx ruff check src tests
+evotrace
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for adapter requirements and the pull-request checklist.
+New sessions default to the Harness **Full access** permission preset. To start
+with the narrower workspace sandbox instead, run
+`DSH_PERMISSION_MODE=workspace-write evotrace`.
+
+### One-line install — Windows PowerShell
+
+```powershell
+irm https://raw.githubusercontent.com/jinzijian/EvoTrace/main/install.ps1 | iex
+evotrace
+```
+
+### From source
+
+Requires Git, Node.js `22.19+` or `24+`, Python `3.9+`, and Docker for isolated execution work.
+
+```bash
+git clone https://github.com/jinzijian/EvoTrace.git
+cd EvoTrace
+python3 -m venv .venv
+.venv/bin/python -m pip install -e .
+pnpm install
+pnpm dev
+```
+
+On first launch:
+
+1. choose a workspace;
+2. optionally configure DeepSeek, OpenAI, or Anthropic in Settings;
+3. type `/` to open the command palette;
+4. run `/init` to index existing Claude Code and Codex history.
+
+Useful commands inside the app:
+
+```text
+/init [all|codex|claude]    import existing history and refresh mining
+/candidates                browse ranked, evidence-backed candidates
+/search payment retry      search tasks, repos, and evidence
+/show 1                    inspect provenance and readiness gaps
+/review 1                  run the four-agent sequential review pipeline
+/build 1                   compile a Docker-ready asset candidate
+/validate 1                reject the base and accept the reference in Docker
+/calibrate 1               run 5 DeepSeek attempts and target 2 verifier passes
+/harden 1                  derive, verify, and self-play a harder child task
+/evolve 1 2                explore asset 1, test compressed experience on held-out asset 2
+/assets                    inspect compiled assets
+/runs                      inspect saved validation evidence
+/doctor                    check local integrations
+```
+
+These are native Harness slash commands, and the same operations are exposed as typed agent tools. API keys are
+entered in the Harness Settings UI; EvoTrace does not accept keys in slash commands or store them in trajectories.
+
+## One orchestrator, four sequential subagents
+
+`/review <candidate>` starts one model turn. The EvoTrace Orchestrator then waits for each foreground DeepSeek
+Harness child before starting the next one, so downstream stages receive upstream evidence instead of producing
+four unrelated votes. Candidate Gate must first record one immutable route: `direct`, `derived_seed`,
+`preference_only`, or `reject`. EvoTrace binds that decision to the exact candidate ID; build/harden tools reject
+candidate switching, and validation is bound to the asset actually produced by the hardener.
+
+| Stage | Can do | Cannot do |
+|---|---|---|
+| **Episode Miner** | bound the coherent episode and count effective actions | use raw length as proof, build or approve an asset |
+| **Candidate Gate** | judge value, complexity, and reconstructability | mutate data, collapse all axes into one score |
+| **Task Builder / Hardener** | compile a direct bundle or derive a harder child through fixed tools | edit the source checkout, approve its own verifier |
+| **Verifier Critic** | run fixed Docker validation and opt-in self-play; audit provenance and runs | run verifier code on the host, certify missing evidence |
+
+Only the EvoTrace Orchestrator is exposed in the product roster. Each role is a fresh, foreground, one-shot child
+session with a role-specific tool allowlist and no delegation tools. The generic DeepSeek Harness coding presets
+are intentionally excluded because they have a different host-access contract.
+
+## What an asset contains
+
+| Layer | Evidence or output | Uses |
+|---|---|---|
+| Preference/correction | human edits, rejected/chosen attempts, successful recovery | DPO, SFT, QA, preference learning |
+| Executable task | task intent, repository base, initial state, environment evidence | agent evals, regression tasks, RL environments |
+| Verifier/reward candidate | test commands, checks, provenance, sandbox policy | rollout scoring and execution rewards after validation |
+| Validated trajectory | replayed rollout plus independent verifier evidence | high-quality SFT and RL post-training data |
+| Execution experience | runtime facts, commands, code locations, failures, compression provenance | conditioning, curriculum learning, and training examples after held-out validation |
+
+`Mined`, `Buildable`, `bundle generated`, and `Verified` are different states. A history import is buildable only
+when it has a meaningful task, an execution-verifiable route, a repository base, medium-or-better reconstruction,
+a recovered reference patch, runnable verification commands, and a supported environment. Empty attachment
+wrappers, low-confidence reconstructions, and missing Node manifests fail closed instead of producing weak
+bundles. EvoTrace never promotes a generated verifier to `Verified` merely because an LLM wrote it.
+
+Codex subagent/fork trajectories remain indexed with parent lineage for audit and future preference mining, but
+they are hidden from the default candidate list so one parent session is not counted as several independent tasks.
+Use `/candidates --all` to inspect them explicitly.
+
+<p align="center">
+  <img src="assets/evotrace-pipeline.svg" alt="EvoTrace trajectory-to-post-training pipeline" width="980">
+</p>
+
+## Security
+
+- Importers read Claude Code/Codex history and Git evidence without modifying the source files.
+- The Orchestrator and its leaf subagents expose fixed domain operations, not arbitrary host shell or filesystem tools.
+- DSH telemetry is disabled by the EvoTrace launcher unless the user explicitly overrides it.
+- Local product state lives under `~/.evotrace/`; Harness state is isolated under `~/.evotrace/harness/`.
+- Verifier validation runs in a fresh Docker world with no host
+  source bind mount, Docker socket, host network, privileged mode, host credentials, or arbitrary output path.
+- Builder and Verifier Critic are separate child sessions. A builder cannot approve its own verifier.
+- `/review` is strictly sequential: Episode Miner → Candidate Gate → Task Builder/Hardener → Verifier Critic.
+- `/calibrate` is explicitly opt-in because task context is sent to the configured DeepSeek provider. Every attempt starts from a fresh task-only workspace; the reference stays hidden, and final scoring runs in Docker without host mounts.
+- `/evolve` is also opt-in. Exploration runs in a disposable workspace sandbox; hidden reasoning is excluded from the saved capsule, secrets and absolute paths are redacted, the raw capsule is withheld from downstream solvers, and candidate patches are scored in Docker.
+- Explorer, Compressor, and every paired solver attempt must pass the workspace-boundary access audit before an evolution can be certified.
+
+Read the normative [sandbox contract](docs/sandbox-contract.md) and [design](docs/design.md).
+
+> [!WARNING]
+> EvoTrace is early alpha, and DeepSeek Harness is currently a developer preview. Mining labels and generated
+> verifier candidates are evidence, not proof. Review every asset before training on it or sharing it.
+
+## Current status
+
+V0.8 now includes:
+
+- a real DeepSeek Harness Web app with EvoTrace title, mark, onboarding, and provider settings;
+- one managed EvoTrace Orchestrator with four foreground, least-privilege subagent roles;
+- native `/init`, `/import`, `/mine`, `/candidates`, `/search`, `/show`, `/review`, `/build`, `/harden`, `/validate`, `/calibrate`, `/evolve`, `/assets`, `/runs`, `/doctor` flows;
+- Claude Code and Codex import, edit-event reference reconstruction, deterministic mining, bundle generation, provenance, and privacy gates;
+- fail-closed build-readiness gates, command-aware Python/Node environment inference, and default deduplication of nested Codex subagents;
+- immutable `/review` route tokens and produced-asset lineage, preventing downstream stages from mutating a different candidate;
+- Docker-only two-state verifier validation: the behavioral verifier must reject the base state and accept the reference state;
+- immutable run evidence tied to the exact bundle digest; only a conforming Docker run promotes an asset to `Verified`.
+- DeepSeek self-play difficulty calibration: independent five-way attempts, target-pass tracking, automatic hint addition/removal, reference-gated verifier overlays, and a `too_easy`/`too_hard` result when a task cannot be honestly forced into the target bucket.
+- execution-experience evolution: autonomous runtime exploration, grounded trajectory compression, paired baseline/conditioned held-out solving, Docker rewards, measured utility, and curriculum feedback.
+
+`/evolve <source> <held-out>` requires two independently built tasks from the same repository for a certifying
+functional-compression result. Omitting the second asset deliberately produces `smoke_only`: it verifies the
+wiring but cannot prove transfer because the source and evaluation task are identical.
+
+Still in progress:
+
+- broader cross-language dependency repair and autonomous environment-builder loops;
+- semantic held-out task generation and adversarial task mutation for assets that remain too easy after all legitimate hints are removed;
+- validated DPO/SFT/RL dataset exporters;
+- the opt-in Marketplace and fine-tuning-service integrations.
+
+## Acknowledgements
+
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is the application and agent foundation.
+- [Microsoft RepoLaunch](https://github.com/microsoft/RepoLaunch) is a primary inspiration for reproducible
+  repository-to-environment construction. EvoTrace begins earlier, by mining tasks and learning signals from lived
+  coding-agent work.
 
 ## License
 
-Apache License 2.0.
+Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

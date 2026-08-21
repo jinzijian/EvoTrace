@@ -1,15 +1,47 @@
-# Design principles
+# EvoTrace on DeepSeek Harness
 
 EvoTrace exists to answer a narrow question:
 
 > How can real coding-agent work become reusable, verifiable evaluation and learning assets?
 
-The compiler uses five principles.
+EvoTrace is a specialized [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) distribution.
+Harness owns the Web application, session lifecycle, model/provider configuration, streaming, command palette,
+approval surface, and plugin runtime. EvoTrace owns the product composition, role presets, trajectory tools,
+deterministic compiler, provenance model, and Docker-only execution contract.
 
-Before compilation, V0.3 adds two local stages: an incremental importer and an evidence-based curator. The importer
-normalizes Claude Code and Codex histories without copying raw logs. The curator separates preference candidates
-from execution-verifiable candidates and records the concrete signals behind every label. It is deliberately a
-deterministic heuristic in V0.3, not a hidden model judge.
+The current architecture is intentionally split into two planes:
+
+```text
+DeepSeek Harness product plane
+  Web UI · model settings · sessions · slash commands · role presets
+                         ↓ fixed typed tools
+EvoTrace compiler plane
+  import · mine · catalog · reconstruct · build · provenance
+                         ↓ Docker execution world
+  dependency setup · base/reference validation · self-play scoring · run evidence
+```
+
+The compiler plane normalizes Claude Code and Codex histories without modifying raw logs. Its evidence-based miner
+separates preference candidates from execution-verifiable candidates and records the concrete signals behind every
+label. A model may help curate or explain those records, but model judgment remains separate provenance and cannot
+override deterministic build or validation gates.
+
+## Interaction model
+
+Running `evotrace` launches the branded Harness Web app. The app publishes one managed **EvoTrace Orchestrator**.
+`/review <candidate>` makes it start four fresh foreground children in a fixed order: Episode Miner, Candidate Gate,
+Task Builder/Hardener, and Verifier Critic. Each child receives only its role-specific tools, and the next stage does
+not start until the previous one returns.
+
+Candidate Gate must record exactly one immutable route (`direct`, `derived_seed`, `preference_only`, or `reject`)
+for the selected candidate. Mutation tools require the route token and exact candidate ID. Validation and
+calibration additionally require the exact child asset emitted by build/harden, so model text cannot silently
+substitute a different candidate between stages.
+
+Typing `/` opens native Harness commands for the same allowlisted operations. The existing Python CLI remains an
+internal compiler sidecar and machine integration surface; it is no longer the primary product interface or agent
+loop. Generic Harness coding presets are not included in the EvoTrace roster because they expose a broader host
+access model than this product permits.
 
 ## 1. Preserve the starting state
 
@@ -20,11 +52,20 @@ Replay restores only that initial state.
 For history imports, the original dirty state may be unavailable. These bundles receive `medium` rather than
 `high` reproducibility confidence. The label is an evidence boundary, not a quality score.
 
+Imported candidates with `low` or `none` reconstruction confidence are not buildable. The compiler also requires a
+meaningful task, a repository base, a reference patch, at least one behavioral verification command, and an
+environment supported by the inferred command/runtime contract. These are deterministic gates, not model votes.
+
+Codex subagent and fork sessions retain `parent_session_id` and `agent_path` lineage. They are excluded from the
+default candidate surface to avoid treating one orchestrated review as several independent real-world tasks, but
+remain available through the explicit all-candidates view.
+
 ## 2. Keep the reference solution out of evaluation
 
-The observed final patch is useful for analysis, task deduplication, and future verifier synthesis. It is not a
-valid universal answer key: a different implementation may be equally correct. Generated verifiers therefore do
-not apply or compare against `reference.patch`.
+The observed final patch is useful for analysis, task deduplication, verifier validation, and future verifier
+synthesis. It is not a valid universal answer key: a different implementation may be equally correct. Candidate
+scoring never compares a rollout with `reference.patch`; only the independent validation stage applies the reference
+inside a disposable container to prove that the recovered verifier accepts at least one known-good state.
 
 ## 3. Make verifier provenance visible
 
@@ -61,6 +102,23 @@ The current open-source release builds and inspects these local asset layers. Fu
 surfaces—including a data marketplace and fine-tuning-service integrations—must remain opt-in. Only assets a user
 explicitly reviews and selects may cross the local trust boundary.
 
+## 6. Calibrate difficulty with honest self-play
+
+`/calibrate` runs the configured DeepSeek Harness solver several times from independent task-only workspaces. The
+default target is two verifier passes in five attempts. A difficulty version consists of the immutable original
+task, a reversible list of hints, and a verifier overlay; the canonical bundle and reference patch are not changed.
+
+When the task is too hard, EvoTrace may add bounded hints derived from existing test commands, changed-file
+provenance, or saved base failure evidence. When it is too easy, it removes hints first. A proposed verifier command
+is accepted only after the hidden reference passes it in Docker. Each solver patch is then applied to the task-only
+image and scored with no host mounts or network.
+
+Calibration is not allowed to manufacture a desired success rate. If every passing patch is equivalent to the
+known reference, EvoTrace records `too_easy` instead of rejecting correct solutions. Such a task should move to an
+easier curriculum bucket or be replaced by a semantically harder task. Likewise, exhausting safe hints records
+`too_hard`. The full versions, attempts, patches, model provenance, Docker reports, and adjustment decisions remain
+local under `calibrations/` and are included in an explicit portable export.
+
 ## Relationship to RepoLaunch
 
 [Microsoft RepoLaunch](https://github.com/microsoft/RepoLaunch) is the primary technical inspiration for the
@@ -91,10 +149,15 @@ or invoke RepoLaunch code.
 
 - A local history is sensitive input.
 - A compiled bundle contains code and must be treated as sensitive until reviewed.
-- Restoring a bundle extracts files but does not install dependencies.
-- Running a verifier executes shell commands from the bundle.
+- Restoring a bundle on the host extracts files but does not install dependencies.
+- `/validate` builds dependencies into an image, then executes verifier commands only in disposable containers.
 - Host-side execution of a supplied agent command is prohibited; `benchmark --agent` is rejected.
-- A future autonomous curator/builder/candidate agent must run only inside the container boundary defined by
+- EvoTrace Harness roles receive different fixed tool catalogs. None receives arbitrary host shell or filesystem
+  tools. The parent Orchestrator can read candidate evidence but cannot call generic mutation tools; route-bound
+  wrappers expose build/harden only after Candidate Gate, and validation only for the produced asset lineage.
+- Cloud model use requires explicit provider configuration. API keys stay in Harness provider settings and are not
+  accepted in trajectory commands or copied into compiler records.
+- A future autonomous environment-builder, verifier-writer, or candidate agent must run only inside the container boundary defined by
   [`sandbox-contract.md`](sandbox-contract.md).
 
 Do not restore, verify, or benchmark an untrusted bundle outside an isolated environment.

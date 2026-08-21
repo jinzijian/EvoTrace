@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="460" viewBox="0 0 1000 460" role="img" aria-labelledby="title desc">
-  <title id="title">EvoTrace quickstart terminal</title>
-  <desc id="desc">An example EvoTrace init run that turns local agent sessions into reusable assets.</desc>
-  <rect width="1000" height="460" rx="18" fill="#0d1117"/>
-  <rect x="1" y="1" width="998" height="458" rx="17" fill="none" stroke="#30363d" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+  <title id="title">EvoTrace interactive workspace</title>
+  <desc id="desc">The EvoTrace slash-command workspace for browsing and searching local coding-agent assets.</desc>
+  <rect width="1000" height="520" rx="18" fill="#0d1117"/>
+  <rect x="1" y="1" width="998" height="518" rx="17" fill="none" stroke="#30363d" stroke-width="2"/>
   <circle cx="30" cy="28" r="7" fill="#ff5f56"/>
   <circle cx="54" cy="28" r="7" fill="#ffbd2e"/>
   <circle cx="78" cy="28" r="7" fill="#27c93f"/>
@@ -10,27 +10,33 @@
   <line x1="0" y1="55" x2="1000" y2="55" stroke="#30363d"/>
 
   <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="21">
-    <text x="34" y="94" fill="#58a6ff">$</text>
-    <text x="58" y="94" fill="#f0f6fc">evotrace init</text>
-    <text x="34" y="132" fill="#8b949e">Scanning ~/.claude and ~/.codex...</text>
+    <text x="34" y="92" fill="#58a6ff">$</text>
+    <text x="58" y="92" fill="#f0f6fc">et</text>
 
-    <text x="34" y="178" fill="#3fb950">✓</text>
-    <text x="66" y="178" fill="#f0f6fc">184 sessions indexed</text>
-    <text x="34" y="214" fill="#3fb950">✓</text>
-    <text x="66" y="214" fill="#f0f6fc">73 reusable assets found</text>
+    <text x="34" y="136" fill="#d2a8ff" font-weight="700">EvoTrace</text>
+    <text x="160" y="136" fill="#8b949e">real-world agent history → post-training assets</text>
+    <text x="34" y="174" fill="#3fb950">184 sessions</text>
+    <text x="210" y="174" fill="#8b949e">·</text>
+    <text x="238" y="174" fill="#3fb950">73 candidates</text>
+    <text x="414" y="174" fill="#8b949e">·  26 assets  ·  14 verified runs</text>
 
-    <text x="66" y="256" fill="#d2a8ff">31</text>
-    <text x="112" y="256" fill="#c9d1d9">human-corrected</text>
-    <text x="410" y="256" fill="#d2a8ff">26</text>
-    <text x="456" y="256" fill="#c9d1d9">executable evals</text>
-    <text x="66" y="292" fill="#d2a8ff">19</text>
-    <text x="112" y="292" fill="#c9d1d9">preference candidates</text>
-    <text x="410" y="292" fill="#d2a8ff">14</text>
-    <text x="456" y="292" fill="#c9d1d9">recovery trajectories</text>
+    <text x="34" y="222" fill="#58a6ff">evotrace ›</text>
+    <text x="172" y="222" fill="#f0f6fc">/</text>
+    <text x="34" y="264" fill="#8b949e">Slash commands</text>
+    <text x="66" y="302" fill="#d2a8ff">/candidates</text>
+    <text x="270" y="302" fill="#c9d1d9">browse valuable trajectories</text>
+    <text x="66" y="338" fill="#d2a8ff">/show 1</text>
+    <text x="270" y="338" fill="#c9d1d9">inspect value and RL readiness</text>
+    <text x="600" y="302" fill="#d2a8ff">/build 1</text>
+    <text x="760" y="302" fill="#c9d1d9">compile asset</text>
+    <text x="600" y="338" fill="#d2a8ff">/export 1</text>
+    <text x="760" y="338" fill="#c9d1d9">keep or license</text>
 
-    <text x="34" y="350" fill="#3fb950">Everything stayed local.</text>
-    <text x="34" y="386" fill="#8b949e">No model or data upload was used.</text>
-    <text x="34" y="430" fill="#58a6ff">Next:</text>
-    <text x="105" y="430" fill="#f0f6fc">evotrace build</text>
+    <text x="34" y="398" fill="#58a6ff">evotrace ›</text>
+    <text x="172" y="398" fill="#f0f6fc">payment retry</text>
+    <text x="34" y="440" fill="#3fb950">3 candidates found</text>
+    <text x="34" y="478" fill="#d2a8ff">1</text>
+    <text x="70" y="478" fill="#f0f6fc">Fix payment retry race</text>
+    <text x="430" y="478" fill="#8b949e">RL environment · preference pair · Buildable</text>
   </g>
 </svg>

@@ -7,6 +7,21 @@ from ..store import Store
 from ..util import utc_now
 from .common import raw_records, save_import, text_from_content
 
+CLIENT_METADATA_PREFIXES = (
+    "<local-command-caveat>",
+    "<local-command-stdout>",
+    "<ide_opened_file>",
+    "<ide_selection>",
+    "<command-name>",
+    "<command-message>",
+    "<command-args>",
+    "<system-reminder>",
+)
+
+
+def _is_client_metadata(text: str) -> bool:
+    return text.lstrip().lower().startswith(CLIENT_METADATA_PREFIXES)
+
 
 def _timestamp(record: Dict[str, Any]) -> str:
     value = record.get("timestamp")
@@ -15,7 +30,7 @@ def _timestamp(record: Dict[str, Any]) -> str:
 
 def _normalize_content(content: Any, role: str, timestamp: str) -> Iterable[Dict[str, Any]]:
     text = text_from_content(content)
-    if text:
+    if text and not (role == "user" and _is_client_metadata(text)):
         yield {"timestamp": timestamp, "kind": f"message.{role}", "data": {"text": text}}
     if not isinstance(content, list):
         return
@@ -66,7 +81,7 @@ def import_claude(path: Path, store: Store) -> tuple[Path, Dict[str, Any]]:
             continue
         message = item.get("message") or {}
         candidate = text_from_content(message.get("content") if isinstance(message, dict) else None)
-        if candidate:
+        if candidate and not _is_client_metadata(candidate):
             task = candidate
             break
     return save_import(

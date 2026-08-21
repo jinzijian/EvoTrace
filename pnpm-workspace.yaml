@@ -1,0 +1,14 @@
+packages:
+  - .
+
+# Match DeepSeek Harness's reviewed pnpm lifecycle policy. The PTY backend is
+# not exposed to EvoTrace presets, but the installed Harness distribution and
+# Windows durability layer still need their native helpers to be complete.
+allowBuilds:
+  node-pty: true
+  koffi: true
+  '@deepseek-ai/dsh-subprocess-local': true
+  '@google/genai': false
+  protobufjs: false
+
+nodeLinker: hoisted

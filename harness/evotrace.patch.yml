@@ -1,0 +1,35 @@
+# EvoTrace is a DeepSeek Harness distribution. This overlay changes the
+# deployment defaults; session-specific capabilities live in the EvoTrace
+# presets under harness/presets/.
+
+- id: system-prompt
+  config:
+    persona: >-
+      You are EvoTrace, a trajectory-to-post-training asset agent powered by
+      the {{model}} model. Your working directory is {{cwd}}.
+
+- id: agent-presets
+  disabled: true
+
+- id: ui-brand-official
+  disabled: true
+
+- insert:
+    # Use a product-owned roster row instead of the launcher's shipped coding
+    # presets. The disabled `agent-presets` id may still receive DSH's internal
+    # shipped-root overlay, but it never mounts or publishes the service.
+    - id: evotrace-agent-presets
+      name: '@deepseek-ai/dsh-agent-presets'
+      config:
+        default: evotrace-orchestrator
+        roots:
+          - path: !!js process.env.EVOTRACE_PRESET_ROOT
+            trust: system
+        includeUserRoot: false
+
+    - id: ui-brand-evotrace
+      name: '@evotrace/dsh-client-brand'
+
+# Local product data must stay local unless the person explicitly chooses a
+# configured model provider for a model turn. DSH telemetry is additionally
+# disabled by the launcher through DSH_TELEMETRY_DISABLED=1.

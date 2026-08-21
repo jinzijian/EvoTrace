@@ -7,5 +7,8 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+node_modules/
+pnpm-debug.log*
+assets/.harness-demo-frames/
 build/
 dist/

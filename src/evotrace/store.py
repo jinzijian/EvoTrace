@@ -33,12 +33,16 @@ class Store:
         self.benchmarks = self.root / "benchmarks"
         self.runs = self.root / "runs"
         self.candidates = self.root / "candidates"
+        self.calibrations = self.root / "calibrations"
+        self.evolutions = self.root / "evolutions"
 
     def initialize(self) -> None:
         self.sessions.mkdir(parents=True, exist_ok=True)
         self.benchmarks.mkdir(parents=True, exist_ok=True)
         self.runs.mkdir(parents=True, exist_ok=True)
         self.candidates.mkdir(parents=True, exist_ok=True)
+        self.calibrations.mkdir(parents=True, exist_ok=True)
+        self.evolutions.mkdir(parents=True, exist_ok=True)
 
     def session_dir(self, session_id: str) -> Path:
         if session_id == "latest":
@@ -89,3 +93,35 @@ class Store:
             except EvoTraceError:
                 continue
         return sorted(result, key=lambda item: item.get("score", 0), reverse=True)
+
+    def list_bundles(self) -> List[tuple[Path, Dict[str, Any]]]:
+        if not self.benchmarks.exists():
+            return []
+        result = []
+        for path in self.benchmarks.iterdir():
+            manifest = path / "task.json"
+            if not path.is_dir() or not manifest.exists():
+                continue
+            try:
+                result.append((path, read_json(manifest)))
+            except EvoTraceError:
+                continue
+        return sorted(result, key=lambda item: item[0].stat().st_mtime, reverse=True)
+
+    def list_runs(self) -> List[tuple[Path, Dict[str, Any]]]:
+        if not self.runs.exists():
+            return []
+        result = []
+        for path in self.runs.iterdir():
+            metadata = path / "run.json"
+            if not path.is_dir() or not metadata.exists():
+                continue
+            try:
+                result.append((path, read_json(metadata)))
+            except EvoTraceError:
+                continue
+        return sorted(
+            result,
+            key=lambda item: item[1].get("created_at", ""),
+            reverse=True,
+        )

@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "evotrace"
-version = "0.3.2"
-description = "Turn every Claude Code and Codex session into reusable training, evaluation, and verification assets."
+version = "0.8.0"
+description = "Compile real-world coding-agent trajectories into verified post-training assets."
 readme = "README.md"
 requires-python = ">=3.9"
 license = {file = "LICENSE"}
@@ -33,12 +33,14 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Topic :: Software Development :: Testing",
 ]
-dependencies = []
+dependencies = [
+  "prompt-toolkit>=3.0,<4",
+]
 
 [project.urls]
-Homepage = "https://github.com/jinzijian/evotrace"
-Repository = "https://github.com/jinzijian/evotrace"
-Issues = "https://github.com/jinzijian/evotrace/issues"
+Homepage = "https://github.com/jinzijian/EvoTrace"
+Repository = "https://github.com/jinzijian/EvoTrace"
+Issues = "https://github.com/jinzijian/EvoTrace/issues"
 
 [project.scripts]
 evotrace = "evotrace.cli:main"

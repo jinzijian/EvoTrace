@@ -14,11 +14,13 @@ from .gitops import (
     head_commit,
     require_repo,
 )
+from .quality import task_is_meaningful
 from .store import Store, find_git_root
 from .util import load_jsonl, unique, utc_now, write_json
 
 VERIFY_PREFIXES = [
     re.compile(r"^(?:uv\s+run\s+)?(?:python(?:3(?:\.\d+)?)?\s+-m\s+)?pytest\b"),
+    re.compile(r"^(?:uv\s+run\s+)?python(?:3(?:\.\d+)?)?\s+-m\s+unittest\b"),
     re.compile(r"^(?:uv\s+run\s+)?(?:ruff|mypy|pyright|tox|nox)\b"),
     re.compile(r"^(?:npm|pnpm|yarn|bun)\s+(?:test|run\s+(?:test|lint|build|typecheck))\b"),
     re.compile(r"^cargo\s+(?:test|check|clippy)\b"),
@@ -27,6 +29,7 @@ VERIFY_PREFIXES = [
     re.compile(r"^(?:mvn|mvnw|\.\/mvnw)\b.*\btest\b"),
     re.compile(r"^(?:gradle|\.\/gradlew)\s+(?:test|check)\b"),
 ]
+REMOTE_COMMAND = re.compile(r"(?i)(?:^|[;&|]\s*)ssh(?:\s|$)")
 
 SANDBOX_POLICY = {
     "schema_version": "0.1",
@@ -189,6 +192,10 @@ def commands_from_events(events_path: Path) -> List[str]:
         command = arguments.get("cmd") or arguments.get("command")
         if not isinstance(command, str):
             continue
+        # A verifier observed inside an SSH command belongs to the remote
+        # machine, not to the locally reconstructed repository.
+        if REMOTE_COMMAND.search(command):
+            continue
         for segment in re.split(r"\n|&&|;", command):
             normalized = segment.strip()
             if normalized and any(pattern.search(normalized) for pattern in VERIFY_PREFIXES):
@@ -252,44 +259,155 @@ def _protected_test_paths(repo: Path, commit: str, reference_patch: Path) -> Lis
     return sorted(protected)
 
 
-def infer_environment(repo: Path) -> Dict[str, Any]:
-    files = {item.name for item in repo.iterdir()}
-    if "uv.lock" in files:
-        return {
-            "kind": "python",
-            "base_image": "python:3.11-slim",
-            "install_commands": [
-                "pip install --no-cache-dir uv",
-                "uv sync --frozen",
-            ],
-        }
-    if "pyproject.toml" in files or "requirements.txt" in files:
-        install = (
-            ["pip install --no-cache-dir -r requirements.txt"]
-            if "requirements.txt" in files
-            else ["pip install --no-cache-dir -e ."]
+def infer_environment(
+    repo: Path,
+    *,
+    commit: Optional[str] = None,
+    verifier_commands: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    if commit:
+        files = set(git(repo, "ls-tree", "--name-only", commit).splitlines())
+    else:
+        files = {item.name for item in repo.iterdir()}
+    commands = verifier_commands or []
+    needs_pytest = any(
+        re.search(
+            r"(?:^|\s)(?:python(?:3(?:\.\d+)?)?\s+-m\s+)?pytest\b",
+            value,
         )
-        return {"kind": "python", "base_image": "python:3.11-slim", "install_commands": install}
-    if "pnpm-lock.yaml" in files:
+        for value in commands
+    )
+    needs_ruff = any(re.search(r"(?:^|\s)(?:uv\s+run\s+)?ruff\b", value) for value in commands)
+    needs_mypy = any(re.search(r"(?:^|\s)(?:uv\s+run\s+)?mypy\b", value) for value in commands)
+    needs_node = any(
+        re.search(r"^(?:npm|pnpm|yarn|bun)\s+", value.strip()) for value in commands
+    )
+    uses_python = needs_pytest or needs_ruff or needs_mypy or any(
+        re.search(r"(?:^|\s)(?:python|python3|uv\s+run)(?:\s|$)", value)
+        for value in commands
+    )
+    has_python_project = bool("pyproject.toml" in files or "uv.lock" in files)
+    has_node_project = "package.json" in files
+    unsupported: List[str] = []
+    if needs_node and not has_node_project:
+        unsupported.append(
+            "Node verifier commands were recovered, but package.json is absent from the base commit"
+        )
+    if any(value.strip().startswith("pnpm ") for value in commands) and "pnpm-lock.yaml" not in files:
+        unsupported.append(
+            "pnpm verifier commands were recovered, but pnpm-lock.yaml is absent from the base commit"
+        )
+
+    install: List[str] = []
+    uv_project = "uv.lock" in files
+    if uv_project:
+        install.extend(
+            [
+                "python -m pip install --no-cache-dir uv",
+                "uv sync --frozen",
+            ]
+        )
+        verifier_packages = [
+            package
+            for required, package in (
+                (needs_pytest, "pytest"),
+                (needs_ruff, "ruff"),
+                (needs_mypy, "mypy"),
+            )
+            if required
+        ]
+        if verifier_packages:
+            install.append(
+                "uv pip install --python /workspace/.venv/bin/python "
+                + " ".join(verifier_packages)
+            )
+    requirement_files = sorted(
+        value
+        for value in files
+        if re.fullmatch(r"requirements(?:[-_.][A-Za-z0-9_.-]+)?\.txt", value)
+    )
+    if not uv_project and ("pyproject.toml" in files or requirement_files or uses_python):
+        if "requirements.txt" in files:
+            install.append("python -m pip install --no-cache-dir -r requirements.txt")
+        elif requirement_files:
+            preferred = next(
+                (
+                    value
+                    for value in requirement_files
+                    if any(marker in value.lower() for marker in ("test", "dev", "public"))
+                ),
+                requirement_files[0],
+            )
+            install.append(f"python -m pip install --no-cache-dir -r {preferred}")
+        elif "pyproject.toml" in files:
+            install.append("python -m pip install --no-cache-dir -e .")
+        if needs_pytest:
+            install.append("python -m pip install --no-cache-dir pytest")
+        if needs_ruff:
+            install.append("python -m pip install --no-cache-dir ruff")
+        if needs_mypy:
+            install.append("python -m pip install --no-cache-dir mypy")
+
+    if needs_node and has_node_project:
+        if "pnpm-lock.yaml" in files:
+            install.extend(["corepack enable", "pnpm install --frozen-lockfile"])
+        elif "package-lock.json" in files:
+            install.append("npm ci")
+        else:
+            install.append("npm install")
+
+    if uses_python or has_python_project:
+        kind = "python+node" if needs_node else "python"
+        base_image = "node:22-bookworm-slim" if needs_node else "python:3.11-slim"
+        return {
+            "kind": kind,
+            "base_image": base_image,
+            "install_commands": unique(install),
+            "uv_project": uv_project,
+            "requirements": requirement_files,
+            "unsupported_reasons": unique(unsupported),
+        }
+    if needs_node or has_node_project:
         return {
             "kind": "node",
-            "base_image": "node:22-slim",
-            "install_commands": ["corepack enable", "pnpm install --frozen-lockfile"],
+            "base_image": "node:22-bookworm-slim",
+            "install_commands": unique(install),
+            "unsupported_reasons": unique(unsupported),
         }
-    if "package-lock.json" in files or "package.json" in files:
-        return {"kind": "node", "base_image": "node:22-slim", "install_commands": ["npm ci"]}
     if "Cargo.toml" in files:
-        return {"kind": "rust", "base_image": "rust:1-slim", "install_commands": ["cargo fetch"]}
+        return {
+            "kind": "rust",
+            "base_image": "rust:1-slim",
+            "install_commands": ["cargo fetch"],
+            "unsupported_reasons": unique(unsupported),
+        }
     if "go.mod" in files:
-        return {"kind": "go", "base_image": "golang:1.24", "install_commands": ["go mod download"]}
-    return {"kind": "generic", "base_image": "debian:bookworm-slim", "install_commands": []}
+        return {
+            "kind": "go",
+            "base_image": "golang:1.24",
+            "install_commands": ["go mod download"],
+            "unsupported_reasons": unique(unsupported),
+        }
+    return {
+        "kind": "generic",
+        "base_image": "debian:bookworm-slim",
+        "install_commands": [],
+        "unsupported_reasons": unique(unsupported),
+    }
 
 
-def _dockerfile(environment: Dict[str, Any]) -> str:
+def _dockerfile(environment: Dict[str, Any], *, hidden_tests: bool = False) -> str:
     install = "\n".join(f"RUN {command}" for command in environment["install_commands"])
+    hidden = ""
+    if hidden_tests:
+        hidden = """COPY patches/hidden-tests.patch /evotrace-hidden-tests.patch
+RUN if [ -s /evotrace-hidden-tests.patch ]; then git apply --whitespace=nowarn /evotrace-hidden-tests.patch; fi && git add -A && git commit -q --allow-empty -m 'EvoTrace hidden verifier fixtures'
+"""
     return f"""ARG BASE_IMAGE={environment["base_image"]}
-FROM ${{BASE_IMAGE}}
-RUN apt-get update && apt-get install -y --no-install-recommends git python3 && rm -rf /var/lib/apt/lists/*
+FROM ${{BASE_IMAGE}} AS runtime
+RUN apt-get update && apt-get install -y --no-install-recommends git python3 python3-venv && rm -rf /var/lib/apt/lists/*
+RUN python3 -m venv /opt/evotrace-bootstrap
+ENV PATH="/workspace/.venv/bin:/opt/evotrace-bootstrap/bin:${{PATH}}"
 WORKDIR /workspace
 COPY environment/base.tar.gz /tmp/base.tar.gz
 RUN tar -xzf /tmp/base.tar.gz -C /workspace && git init -q && git config user.email evotrace@local && git config user.name EvoTrace && git add -A && git commit -q --allow-empty -m 'EvoTrace base state'
@@ -297,11 +415,20 @@ COPY patches/initial.patch /tmp/initial.patch
 RUN if [ -s /tmp/initial.patch ]; then git apply --whitespace=nowarn /tmp/initial.patch; fi
 COPY environment/untracked-initial.tar.gz /tmp/untracked-initial.tar.gz
 RUN if [ -s /tmp/untracked-initial.tar.gz ]; then tar -xzf /tmp/untracked-initial.tar.gz -C /workspace; fi
-{install}
+{hidden}{install}
 RUN mkdir -p /evotrace
 COPY task.md verifier.py verifier.json sandbox-policy.json /evotrace/
 RUN groupadd --gid 65532 evotrace && useradd --uid 65532 --gid 65532 --no-create-home evotrace && chown -R 65532:65532 /workspace /evotrace
 ENV EVOTRACE_TASK_FILE=/evotrace/task.md EVOTRACE_WORKSPACE=/workspace SCALEVERIFIER_TASK_FILE=/evotrace/task.md SCALEVERIFIER_WORKSPACE=/workspace
+
+FROM runtime AS validation-reference
+COPY patches/reference.patch /evotrace/reference.patch
+COPY environment/untracked-reference.tar.gz /evotrace/untracked-reference.tar.gz
+RUN chown 65532:65532 /evotrace/reference.patch /evotrace/untracked-reference.tar.gz
+USER 65532:65532
+CMD ["/bin/sh"]
+
+FROM runtime AS task
 USER 65532:65532
 CMD ["/bin/sh"]
 """
@@ -331,8 +458,10 @@ def compile_session(
     target_store.initialize()
     session_dir, trajectory = target_store.load_session(session_id)
     task = (task_override or (trajectory.get("task") or {}).get("text") or "").strip()
-    if not task:
-        raise EvoTraceError("This session has no recoverable task. Pass --task when compiling.")
+    if not task_is_meaningful(task):
+        raise EvoTraceError(
+            "This session has no meaningful recoverable task; the imported text is empty or a placeholder."
+        )
 
     repository = trajectory.get("repository") or {}
     root_value = repository.get("root")
@@ -345,6 +474,41 @@ def compile_session(
     check_commit = git(repo, "rev-parse", "--verify", f"{commit}^{{commit}}", check=False).strip()
     if not check_commit:
         raise EvoTraceError(f"Base commit is not available in {repo}: {commit}")
+
+    source_kind = str((trajectory.get("source") or {}).get("kind") or "")
+    reconstruction = str(repository.get("reconstruction_confidence") or "none")
+    if source_kind != "command" and reconstruction not in {"high", "medium"}:
+        raise EvoTraceError(
+            "Repository reconstruction confidence is "
+            f"{reconstruction}; high or medium is required before building."
+        )
+    reference_patch = session_dir / "patches" / "final.patch"
+    if not reference_patch.exists() or reference_patch.stat().st_size == 0:
+        raise EvoTraceError("This session has no reconstructed reference patch.")
+
+    explicit = list((trajectory.get("verification") or {}).get("commands") or [])
+    commands = unique([*explicit, *(extra_commands or [])])
+    inference = "explicit"
+    if not commands:
+        commands = commands_from_events(session_dir / "events.jsonl")
+        inference = "trajectory"
+    if not commands:
+        commands = _default_commands(repo)
+        inference = "repository"
+    if not commands:
+        raise EvoTraceError("No behavioral verification command could be reconstructed.")
+    environment = infer_environment(repo, commit=commit, verifier_commands=commands)
+    unsupported = environment.get("unsupported_reasons") or []
+    if unsupported:
+        raise EvoTraceError("Environment reconstruction failed: " + "; ".join(unsupported))
+    if environment.get("uv_project"):
+        commands = [re.sub(r"^uv\s+run\s+", "", command) for command in commands]
+        commands = [
+            re.sub(r"^python3(?=\s+-m\s+pytest\b)", "python", command)
+            for command in commands
+        ]
+    elif environment.get("kind") in {"python", "python+node"}:
+        commands = [re.sub(r"^uv\s+run\s+", "", command) for command in commands]
 
     bundle = target_store.benchmarks / trajectory["session_id"]
     if bundle.exists():
@@ -359,19 +523,12 @@ def compile_session(
         session_dir / "environment" / "untracked-initial.tar.gz",
         bundle / "environment" / "untracked-initial.tar.gz",
     )
+    copy_file(
+        session_dir / "environment" / "untracked-final.tar.gz",
+        bundle / "environment" / "untracked-reference.tar.gz",
+    )
 
-    explicit = list((trajectory.get("verification") or {}).get("commands") or [])
-    commands = unique([*explicit, *(extra_commands or [])])
-    inference = "explicit"
-    if not commands:
-        commands = commands_from_events(session_dir / "events.jsonl")
-        inference = "trajectory"
-    if not commands:
-        commands = _default_commands(repo)
-        inference = "repository"
-    environment = infer_environment(repo)
     protected_paths = _protected_test_paths(repo, commit, bundle / "patches" / "reference.patch")
-    reconstruction = repository.get("reconstruction_confidence", "none")
     if trajectory.get("source", {}).get("kind") == "command":
         reproducibility_confidence = "high"
     elif reconstruction in {"high", "medium"}:
@@ -410,6 +567,12 @@ def compile_session(
             "untracked_snapshot": (bundle / "environment" / "untracked-initial.tar.gz")
             .stat()
             .st_size
+            > 0,
+            "reference_patch": (bundle / "patches" / "reference.patch").stat().st_size
+            > 0,
+            "reference_untracked_snapshot": (
+                bundle / "environment" / "untracked-reference.tar.gz"
+            ).stat().st_size
             > 0,
             "confidence": reproducibility_confidence,
             "repository_reconstruction": reconstruction,

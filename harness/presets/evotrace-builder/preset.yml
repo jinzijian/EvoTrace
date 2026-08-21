@@ -1,0 +1,3 @@
+name: EvoTrace Builder
+description: Compile selected candidates into environment and verifier-candidate bundles.
+order: 2

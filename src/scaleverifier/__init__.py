@@ -9,6 +9,7 @@ _MODULES = (
     "analytics",
     "builder",
     "compiler",
+    "curator_agent",
     "errors",
     "gitops",
     "history",

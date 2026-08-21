@@ -37,6 +37,37 @@ jobs:
       - name: Build
         run: uv build
 
+  harness:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify one-line installer release payload
+        run: git ls-files --error-unmatch package.json pnpm-lock.yaml harness/launcher.mjs harness/presets/evotrace-orchestrator/agent.cordis.yml
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install compiler and Harness
+        run: |
+          uv sync --locked
+          npm install --global pnpm@10.30.1
+          pnpm install --frozen-lockfile
+
+      - name: Test Harness composition and role tools
+        run: pnpm test:harness
+
+      - name: Check integrated runtime
+        run: pnpm harness:doctor
+
   windows-installer:
     runs-on: windows-latest
 
@@ -45,14 +76,19 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - uses: astral-sh/setup-uv@v10.0.1
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Install pnpm
+        run: npm install --global pnpm@10.30.1
 
       - name: Install through PowerShell entrypoint
         shell: pwsh
         env:
           EVOTRACE_INSTALL_SOURCE: ${{ github.workspace }}
-          UV_TOOL_DIR: ${{ runner.temp }}/evotrace-tools
-          UV_TOOL_BIN_DIR: ${{ runner.temp }}/evotrace-bin
+          EVOTRACE_INSTALL_ROOT: ${{ runner.temp }}/evotrace-app
+          EVOTRACE_BIN_DIR: ${{ runner.temp }}/evotrace-bin
         run: |
           ./install.ps1
-          & "$env:UV_TOOL_BIN_DIR/evotrace.exe" --version
+          & "$env:EVOTRACE_BIN_DIR/evotrace.cmd" doctor
