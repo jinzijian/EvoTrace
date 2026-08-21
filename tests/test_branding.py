@@ -17,6 +17,13 @@ from evotrace.store import Store
 
 
 class BrandingTests(unittest.TestCase):
+    def test_readmes_ship_the_evotrace_logo(self):
+        root = Path(__file__).resolve().parents[1]
+        logo = root / "assets" / "evotrace-logo.svg"
+        self.assertIn('<svg xmlns="http://www.w3.org/2000/svg"', logo.read_text())
+        for readme in (root / "README.md", root / "README.zh-CN.md"):
+            self.assertIn('src="assets/evotrace-logo.svg"', readme.read_text())
+
     def test_primary_and_legacy_namespaces_share_version_and_error_type(self):
         self.assertEqual(evotrace.__version__, "0.8.0")
         self.assertEqual(scaleverifier.__version__, evotrace.__version__)

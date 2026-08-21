@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" fill="none">
+  <defs>
+    <linearGradient id="plate" x1="20" y1="14" x2="141" y2="148" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#161B22"/>
+      <stop offset="1" stop-color="#0D1117"/>
+    </linearGradient>
+    <linearGradient id="trace" x1="35" y1="42" x2="123" y2="116" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8B5CF6"/>
+      <stop offset="0.58" stop-color="#58A6FF"/>
+      <stop offset="1" stop-color="#2F81F7"/>
+    </linearGradient>
+    <filter id="shadow" x="5" y="7" width="150" height="151" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#000000" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)">
+    <rect x="16" y="12" width="128" height="128" rx="34" fill="url(#plate)"/>
+    <rect x="16.75" y="12.75" width="126.5" height="126.5" rx="33.25" stroke="#30363D" stroke-width="1.5"/>
+  </g>
+
+  <path d="M116 43H63C45.9 43 32 56.9 32 74s13.9 31 31 31h34" stroke="url(#trace)" stroke-width="12" stroke-linecap="round"/>
+  <path d="M61 74h58M96 103l23-29-23-29" stroke="#58A6FF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="61" cy="105" r="10" fill="#3FB950"/>
+  <circle cx="61" cy="105" r="4" fill="#D1F7D8"/>
+</svg>
