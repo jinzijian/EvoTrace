@@ -176,7 +176,11 @@ def _safe_members(archive: tarfile.TarFile, destination: Path):
 
 def extract_archive(archive_path: Path, destination: Path) -> None:
     destination.mkdir(parents=True, exist_ok=True)
-    with tarfile.open(archive_path, "r:*") as archive:
+    try:
+        archive = tarfile.open(archive_path, "r:*")
+    except tarfile.ReadError as exc:
+        raise EvoTraceError(f"Base archive is empty or unreadable: {archive_path}") from exc
+    with archive:
         members = list(_safe_members(archive, destination))
         if sys.version_info >= (3, 12):
             archive.extractall(destination, members=members, filter="data")
