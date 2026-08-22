@@ -201,6 +201,10 @@ def recover_reference_patch(
         return {"status": "unavailable", "reason": "repository checkout is unavailable"}
     if not git(repo, "rev-parse", "--verify", f"{commit}^{{commit}}", check=False).strip():
         return {"status": "unavailable", "reason": "base commit is unavailable"}
+    # `git archive` on an empty tree exits 0 but writes a gzip that tarfile
+    # cannot open, so an empty base has to be detected before archiving.
+    if not git(repo, "ls-tree", "-r", "--name-only", commit).strip():
+        return {"status": "unavailable", "reason": "base commit has no tracked files"}
 
     normalized_events = list(events)
     outcomes = _successful_calls(normalized_events)
